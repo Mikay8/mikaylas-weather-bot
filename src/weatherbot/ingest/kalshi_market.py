@@ -5,7 +5,8 @@ Public market data (GET /markets) does not require authentication.
 """
 
 import json
-from datetime import datetime, timezone
+import re
+from datetime import date, datetime, timezone
 
 import httpx
 from dotenv import load_dotenv
@@ -17,6 +18,18 @@ load_dotenv()
 
 KALSHI_BASE = "https://external-api.kalshi.com/trade-api/v2"
 SERIES_TICKER = "KXHIGHNY"
+
+# Ticker format: KXHIGHNY-26AUG19-T92 -> event date 2026-08-19
+_TICKER_DATE_RE = re.compile(r"KXHIGHNY-(\d{2})([A-Z]{3})(\d{2})-")
+
+
+def parse_target_date(ticker: str) -> date | None:
+    match = _TICKER_DATE_RE.match(ticker)
+    if not match:
+        return None
+    yy, mon, dd = match.groups()
+    parsed = datetime.strptime(f"20{yy}-{mon}-{dd}", "%Y-%b-%d")
+    return parsed.date()
 
 
 def _client() -> httpx.Client:
@@ -62,10 +75,10 @@ def store_snapshot(market: dict, timestamp: datetime):
                 """
                 INSERT INTO market_snapshots
                     (contract_id, timestamp, bracket_low, bracket_high, yes_bid, yes_ask,
-                     implied_prob, volume, open_interest, raw_response)
+                     implied_prob, volume, open_interest, target_date, strike_type, raw_response)
                 VALUES
                     (:contract_id, :timestamp, :bracket_low, :bracket_high, :yes_bid, :yes_ask,
-                     :implied_prob, :volume, :open_interest, :raw_response)
+                     :implied_prob, :volume, :open_interest, :target_date, :strike_type, :raw_response)
                 ON CONFLICT (contract_id, timestamp) DO NOTHING
                 """
             ),
@@ -79,6 +92,8 @@ def store_snapshot(market: dict, timestamp: datetime):
                 "implied_prob": implied_prob_from_market(market),
                 "volume": _to_float(market.get("volume_fp")),
                 "open_interest": _to_float(market.get("open_interest_fp")),
+                "target_date": parse_target_date(market["ticker"]),
+                "strike_type": market.get("strike_type"),
                 "raw_response": json.dumps(market),
             },
         )

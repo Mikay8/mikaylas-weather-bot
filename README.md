@@ -14,8 +14,8 @@ Phase 1 (data pipeline) — in progress.
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-pip install -e .
 cp .env.example .env  # fill in DATABASE_URL, Kalshi keys, etc.
+export PYTHONPATH=src  # needed for every command below
 ```
 
 ### Connecting to the Railway Postgres DB locally
@@ -37,6 +37,29 @@ python3 -m weatherbot.ingest.nws_forecast     # pulls next-day NYC forecast
 python3 -m weatherbot.ingest.kalshi_market    # pulls open KXHIGHNY market snapshots
 python3 -m weatherbot.ingest.nws_settlement   # backfills recent settlement highs
 ```
+
+### Dashboard (forecast/market viewer + paper wallet)
+
+Backend API (FastAPI), with the DB tunnel from above already running:
+
+```bash
+export PYTHONPATH=src
+uvicorn weatherbot.api.main:app --reload --port 8000
+```
+
+Frontend (Next.js), in a separate terminal:
+
+```bash
+cd frontend
+npm install
+cp .env.local.example .env.local
+npm run dev
+```
+
+Open http://localhost:3000. Shows forecast-vs-actual history, live
+KXHIGHNY market brackets, and a paper wallet (starts at $1,000) — click
+Yes/No on any bracket to place a hypothetical bet. Bets settle
+automatically once `nws_settlement.py` has pulled that date's actual high.
 
 ### Settlement source caveat
 
