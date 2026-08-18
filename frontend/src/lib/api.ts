@@ -95,3 +95,89 @@ export async function resolveTrades() {
   if (!res.ok) throw new Error("Failed to resolve trades");
   return res.json();
 }
+
+export async function resetWallet(startingBalance = 1000) {
+  const res = await fetch(`${API_URL}/api/wallet/reset?starting_balance=${startingBalance}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("Failed to reset wallet");
+  return res.json();
+}
+
+export type TableCoverage = {
+  earliest: string | null;
+  latest: string | null;
+  row_count: number;
+};
+
+export type DataCoverage = {
+  forecasts: TableCoverage;
+  market_snapshots: TableCoverage;
+  settlements: TableCoverage;
+};
+
+export function fetchDataCoverage() {
+  return getJSON<DataCoverage>("/api/settings/data-coverage");
+}
+
+export type SourceHealthEntry = {
+  reachable: boolean;
+  status_code?: number;
+  latency_ms?: number;
+  error?: string;
+};
+
+export type SourceHealth = {
+  nws: SourceHealthEntry;
+  kalshi: SourceHealthEntry;
+};
+
+export function fetchSourceHealth() {
+  return getJSON<SourceHealth>("/api/settings/source-health");
+}
+
+export type CronEntry = {
+  name: string;
+  schedule: string;
+  schedule_label: string;
+  last_run_status?: string;
+  last_run_at?: string | null;
+  error?: string;
+};
+
+export type CronStatus = Record<"forecast" | "market" | "settlement", CronEntry>;
+
+export function fetchCronStatus() {
+  return getJSON<CronStatus>("/api/settings/cron-status");
+}
+
+export async function triggerCronJob(key: string) {
+  const res = await fetch(`${API_URL}/api/settings/cron-trigger/${key}`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || "Failed to trigger cron job");
+  }
+  return res.json();
+}
+
+export async function backfillSettlements(limit = 14) {
+  const res = await fetch(`${API_URL}/api/settings/backfill-settlements?limit=${limit}`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || "Backfill failed");
+  }
+  return res.json();
+}
+
+export async function backfillHistorical(days = 365) {
+  const res = await fetch(`${API_URL}/api/settings/backfill-historical?days=${days}`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || "Historical backfill failed");
+  }
+  return res.json();
+}

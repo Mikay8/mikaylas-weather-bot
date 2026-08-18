@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 
+from weatherbot.api.settings import router as settings_router
 from weatherbot.api.settle import kalshi_fee, resolve_pending_trades
 from weatherbot.db import get_session
 
@@ -17,6 +18,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(settings_router)
 
 
 def _rows_to_dicts(result) -> list[dict]:

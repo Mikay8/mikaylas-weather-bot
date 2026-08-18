@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import DataFreshness from "@/components/DataFreshness";
 import ForecastChart from "@/components/ForecastChart";
@@ -78,12 +79,20 @@ export default function Home() {
         PAPER TRADING — simulated money only. No real orders are ever placed.
       </div>
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <h1 className="text-2xl font-semibold">Mikayla&apos;s Weather Bot</h1>
-          <p className="text-sm text-neutral-500">
-            NYC daily high forecasts vs. Kalshi KXHIGHNY markets — paper trading only.
-          </p>
-          {status && <DataFreshness status={status} />}
+        <header className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Mikayla&apos;s Weather Bot</h1>
+            <p className="text-sm text-neutral-500">
+              NYC daily high forecasts vs. Kalshi KXHIGHNY markets — paper trading only.
+            </p>
+            {status && <DataFreshness status={status} />}
+          </div>
+          <Link
+            href="/settings"
+            className="rounded-md border border-[var(--card-border)] px-3 py-1.5 text-sm text-neutral-500 hover:bg-[var(--table-head-bg)]"
+          >
+            Settings
+          </Link>
         </header>
 
         <div className="mb-8 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
