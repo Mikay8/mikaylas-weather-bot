@@ -16,6 +16,8 @@
   --yes-fg: #15803d;
   --no-bg: #fee2e2;
   --no-fg: #b91c1c;
+  --paper-banner-bg: #fef3c7;
+  --paper-banner-fg: #92400e;
 }
 
 @theme inline {
@@ -42,6 +44,8 @@
     --yes-fg: #86efac;
     --no-bg: #450a0a;
     --no-fg: #fca5a5;
+    --paper-banner-bg: #451a03;
+    --paper-banner-fg: #fcd34d;
   }
 }
 

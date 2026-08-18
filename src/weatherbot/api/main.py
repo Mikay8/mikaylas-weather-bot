@@ -23,6 +23,32 @@ def _rows_to_dicts(result) -> list[dict]:
     return [dict(row._mapping) for row in result]
 
 
+@app.get("/api/status")
+def data_freshness():
+    """Last-pull timestamps for each data source, so the UI can show how
+    stale the current view is (no automated scheduling exists yet — every
+    pull so far has been triggered manually)."""
+    session = get_session()
+    try:
+        last_forecast = session.execute(
+            text("SELECT MAX(forecast_time) FROM forecasts")
+        ).scalar()
+        last_market = session.execute(
+            text("SELECT MAX(timestamp) FROM market_snapshots")
+        ).scalar()
+        last_settlement = session.execute(
+            text("SELECT MAX(date) FROM settlements")
+        ).scalar()
+        return {
+            "last_forecast_pull": last_forecast,
+            "last_market_pull": last_market,
+            "last_settlement_date": last_settlement,
+            "server_time": datetime.now(timezone.utc),
+        }
+    finally:
+        session.close()
+
+
 @app.get("/api/forecasts")
 def list_forecasts(limit: int = 90):
     session = get_session()

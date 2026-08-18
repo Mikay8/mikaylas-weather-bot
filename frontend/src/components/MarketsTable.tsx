@@ -118,11 +118,14 @@ export default function MarketsTable({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5 shadow-xl">
             <h4 className="mb-1 text-base font-semibold">
-              Bet {betTarget.side.toUpperCase()} on {bracketLabel(betTarget.contract)}
+              Simulated bet: {betTarget.side.toUpperCase()} on {bracketLabel(betTarget.contract)}
             </h4>
-            <p className="mb-4 text-xs text-neutral-500">{betTarget.contract.contract_id}</p>
+            <p className="mb-3 text-xs text-neutral-500">{betTarget.contract.contract_id}</p>
+            <p className="mb-4 rounded-md bg-[var(--paper-banner-bg)] px-2.5 py-1.5 text-xs font-medium text-[var(--paper-banner-fg)]">
+              🧪 Paper money only — this will not place a real order on Kalshi.
+            </p>
             <label className="mb-1 block text-xs font-medium text-neutral-500">
-              Amount (paper $)
+              Amount (simulated $)
             </label>
             <input
               type="number"
@@ -145,7 +148,7 @@ export default function MarketsTable({
                 disabled={placing}
                 className="rounded-md bg-[var(--accent-forecast)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               >
-                {placing ? "Placing…" : "Place bet"}
+                {placing ? "Placing…" : "Place paper bet"}
               </button>
             </div>
           </div>

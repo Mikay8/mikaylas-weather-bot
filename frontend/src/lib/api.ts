@@ -66,6 +66,17 @@ export function fetchWallet() {
   return getJSON<Wallet>("/api/wallet");
 }
 
+export type DataStatus = {
+  last_forecast_pull: string | null;
+  last_market_pull: string | null;
+  last_settlement_date: string | null;
+  server_time: string;
+};
+
+export function fetchStatus() {
+  return getJSON<DataStatus>("/api/status");
+}
+
 export async function placeBet(contract_id: string, side: "yes" | "no", amount: number) {
   const res = await fetch(`${API_URL}/api/wallet/bet`, {
     method: "POST",

@@ -1,0 +1,15 @@
+{
+  "name": "mwb",
+  "version": "1.0.0",
+  "description": "Systematic trading bot that predicts New York City daily high-temperature outcomes and trades Kalshi's `KXHIGHNY` contracts when calibrated model probability diverges from market price.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "railway": "^3.10.0"
+  }
+}
