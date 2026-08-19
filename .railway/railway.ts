@@ -89,10 +89,13 @@ export default defineRailway(() => {
   });
 
   const web = service("web", {
-    ...repo,
-    build: { buildCommand: "cd frontend && npm ci && npm run build" },
+    // Scoped to frontend/ so Railpack detects Node from package.json
+    // instead of Python from the repo-root requirements.txt (which left
+    // npm missing from the build image entirely).
+    source: github("Mikay8/mikaylas-weather-bot", { branch: "main", rootDirectory: "frontend" }),
+    build: { buildCommand: "npm ci && npm run build" },
     deploy: {
-      startCommand: "cd frontend && npx next start --port 3000",
+      startCommand: "npx next start --port 3000",
       restartPolicyType: "ON_FAILURE",
     },
     networking: { serviceDomains: { web: { port: 3000 } } },
