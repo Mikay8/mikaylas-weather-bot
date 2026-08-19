@@ -1,8 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Recommendation, Trade } from "@/lib/api";
+import { fetchHourlyWeather, type HourlyWeather, type Recommendation, type Trade } from "@/lib/api";
 import DayWidget from "@/components/DayWidget";
+
+function useHourlyWeather(): HourlyWeather | null {
+  const [data, setData] = useState<HourlyWeather | null>(null);
+
+  useEffect(() => {
+    const load = () => fetchHourlyWeather().then(setData).catch(() => {});
+    load();
+    const interval = setInterval(load, 300_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return data;
+}
 
 type TimeOfDay = "morning" | "day" | "night";
 
@@ -60,6 +73,7 @@ export default function SplitDayWidget({
   onBetPlaced: () => void;
 }) {
   const timeOfDay = useTimeOfDay();
+  const hourly = useHourlyWeather();
 
   return (
     <div
@@ -71,11 +85,13 @@ export default function SplitDayWidget({
             label="Today"
             date={today.date}
             forecastHigh={today.forecastHigh}
+            currentTemp={hourly?.current?.temperature ?? null}
             topRecommendation={today.topRecommendation}
             openTrades={today.openTrades}
             closeTime={today.closeTime}
             showCountdown
-            showHourly
+            hourly={hourly}
+            hourlyMode="today"
             onBetPlaced={onBetPlaced}
           />
         </div>
@@ -84,10 +100,13 @@ export default function SplitDayWidget({
             label="Tomorrow"
             date={tomorrow.date}
             forecastHigh={tomorrow.forecastHigh}
+            currentTemp={null}
             topRecommendation={tomorrow.topRecommendation}
             openTrades={tomorrow.openTrades}
             closeTime={null}
             showCountdown={false}
+            hourly={hourly}
+            hourlyMode="tomorrow"
             onBetPlaced={onBetPlaced}
           />
         </div>

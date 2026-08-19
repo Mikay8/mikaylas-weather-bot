@@ -88,7 +88,7 @@ def fetch_future_hourly(client: httpx.Client, hours: int = 12) -> list[dict]:
     ]
 
 
-def get_hourly_view(past_hours: int = 12, future_hours: int = 12) -> dict:
+def get_hourly_view(past_hours: int = 12, future_hours: int = 36) -> dict:
     with _client() as client:
         current = fetch_current(client)
         past = fetch_past_hourly(client, past_hours)

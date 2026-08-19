@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { Recommendation, Trade } from "@/lib/api";
+import type { HourlyWeather, Recommendation, Trade } from "@/lib/api";
 import { placeBet } from "@/lib/api";
 import Countdown from "@/components/Countdown";
-import HourlyStrip from "@/components/HourlyStrip";
+import { TodayHourlyStrip, TomorrowHourlyStrip } from "@/components/HourlyStrip";
 import TradeSourceBadge from "@/components/TradeSourceBadge";
 
 function bracketLabel(r: { kalshi_label?: string | null; strike_type?: string | null; bracket_low?: number | null; bracket_high?: number | null }): string {
@@ -63,21 +63,25 @@ export default function DayWidget({
   label,
   date,
   forecastHigh,
+  currentTemp = null,
   topRecommendation,
   openTrades,
   closeTime,
   showCountdown,
-  showHourly = false,
+  hourly,
+  hourlyMode,
   onBetPlaced,
 }: {
   label: string;
   date: string;
   forecastHigh: number | null;
+  currentTemp?: number | null;
   topRecommendation: Recommendation | null;
   openTrades: Trade[];
   closeTime: string | null;
   showCountdown: boolean;
-  showHourly?: boolean;
+  hourly?: HourlyWeather | null;
+  hourlyMode?: "today" | "tomorrow";
   onBetPlaced: () => void;
 }) {
   const [amount, setAmount] = useState("25");
@@ -116,15 +120,35 @@ export default function DayWidget({
           <div className="mt-1 text-[13px] font-semibold text-white/85">
             {label} · {date}
           </div>
-          <div className="mt-1.5 flex items-center gap-3">
-            {forecastHigh !== null && (forecastHigh >= 50 ? <SunIcon /> : <SnowflakeIcon />)}
-            <div className="flex items-baseline gap-3">
-              <span className="text-[48px] font-light leading-none tracking-tight text-white">
-                {forecastHigh !== null ? `${forecastHigh}°` : "—"}
-              </span>
-              <span className="text-sm text-white/70">NWS forecast high</span>
+          {currentTemp !== null ? (
+            <div className="mt-1.5 flex items-center gap-5">
+              <div className="flex items-center gap-2.5">
+                {currentTemp >= 50 ? <SunIcon /> : <SnowflakeIcon />}
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[48px] font-light leading-none tracking-tight text-white">
+                    {Math.round(currentTemp)}°
+                  </span>
+                  <span className="text-sm text-white/70">now</span>
+                </div>
+              </div>
+              <div className="flex items-baseline gap-1.5 border-l border-white/15 pl-5">
+                <span className="text-2xl font-light leading-none tracking-tight text-white">
+                  {forecastHigh !== null ? `${forecastHigh}°` : "—"}
+                </span>
+                <span className="text-sm text-white/70">high</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-1.5 flex items-center gap-3">
+              {forecastHigh !== null && (forecastHigh >= 50 ? <SunIcon /> : <SnowflakeIcon />)}
+              <div className="flex items-baseline gap-3">
+                <span className="text-[48px] font-light leading-none tracking-tight text-white">
+                  {forecastHigh !== null ? `${forecastHigh}°` : "—"}
+                </span>
+                <span className="text-sm text-white/70">NWS forecast high</span>
+              </div>
+            </div>
+          )}
           {showCountdown && <CloseCountdown closeTime={closeTime} />}
         </div>
 
@@ -180,7 +204,10 @@ export default function DayWidget({
         )}
       </div>
 
-      {showHourly && <HourlyStrip />}
+      {hourly && hourlyMode === "today" && <TodayHourlyStrip data={hourly} />}
+      {hourly && hourlyMode === "tomorrow" && (
+        <TomorrowHourlyStrip data={hourly} tomorrowDate={date} />
+      )}
 
       {openTrades.length > 0 && (
         <div className="mt-5 space-y-2 border-t border-white/10 pt-4">

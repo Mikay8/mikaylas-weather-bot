@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { fetchHourlyWeather, type HourlyPoint, type HourlyWeather } from "@/lib/api";
+import type { HourlyPoint, HourlyWeather } from "@/lib/api";
 
 function SunIcon({ size = 14 }: { size?: number }) {
   return (
@@ -28,6 +27,10 @@ function SnowflakeIcon({ size = 14 }: { size?: number }) {
 
 function fmtHour(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric" }).replace(" ", "");
+}
+
+function nyDateKey(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(iso));
 }
 
 function HourCell({
@@ -57,34 +60,22 @@ function HourCell({
   );
 }
 
-export default function HourlyStrip() {
-  const [data, setData] = useState<HourlyWeather | null>(null);
-
-  useEffect(() => {
-    fetchHourlyWeather()
-      .then(setData)
-      .catch(() => {});
-    const interval = setInterval(() => {
-      fetchHourlyWeather()
-        .then(setData)
-        .catch(() => {});
-    }, 300_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  if (!data || !data.current) return null;
+export function TodayHourlyStrip({ data }: { data: HourlyWeather }) {
+  if (!data.current) return null;
 
   // The latest "past" observation and "current" can share a timestamp (both
   // are the most recent reading) — drop that duplicate before merging.
   const past = data.past.filter((p) => p.timestamp !== data.current!.timestamp);
-  const points = [...past, data.current, ...data.future];
+  const todayKey = nyDateKey(data.current.timestamp);
+  const futureToday = data.future.filter((p) => nyDateKey(p.timestamp) === todayKey);
+  const points = [...past, data.current, ...futureToday];
   const nowIndex = past.length;
 
   return (
     <div className="mt-4 border-t border-white/10 pt-3">
       <div className="mb-2 flex items-baseline gap-2">
         <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-white/50">
-          Current
+          Now
         </span>
         <span className="font-mono text-sm font-medium text-white/90">
           {Math.round(data.current.temperature)}°F
@@ -93,12 +84,33 @@ export default function HourlyStrip() {
       </div>
       <div className="flex gap-1 overflow-x-auto pb-1">
         {points.map((p, i) => (
-          <HourCell
-            key={p.timestamp}
-            point={p}
-            isNow={i === nowIndex}
-            isPast={i < nowIndex}
-          />
+          <HourCell key={p.timestamp} point={p} isNow={i === nowIndex} isPast={i < nowIndex} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function TomorrowHourlyStrip({
+  data,
+  tomorrowDate,
+}: {
+  data: HourlyWeather;
+  tomorrowDate: string;
+}) {
+  const points = data.future.filter((p) => nyDateKey(p.timestamp) === tomorrowDate);
+  if (points.length === 0) return null;
+
+  return (
+    <div className="mt-4 border-t border-white/10 pt-3">
+      <div className="mb-2 flex items-baseline gap-2">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-white/50">
+          Hourly forecast
+        </span>
+      </div>
+      <div className="flex gap-1 overflow-x-auto pb-1">
+        {points.map((p) => (
+          <HourCell key={p.timestamp} point={p} isNow={false} isPast={false} />
         ))}
       </div>
     </div>
