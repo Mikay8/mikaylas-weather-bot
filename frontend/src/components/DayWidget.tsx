@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Recommendation, Trade } from "@/lib/api";
 import { placeBet } from "@/lib/api";
 import Countdown from "@/components/Countdown";
+import HourlyStrip from "@/components/HourlyStrip";
 import TradeSourceBadge from "@/components/TradeSourceBadge";
 
 function bracketLabel(r: { kalshi_label?: string | null; strike_type?: string | null; bracket_low?: number | null; bracket_high?: number | null }): string {
@@ -66,6 +67,7 @@ export default function DayWidget({
   openTrades,
   closeTime,
   showCountdown,
+  showHourly = false,
   onBetPlaced,
 }: {
   label: string;
@@ -75,6 +77,7 @@ export default function DayWidget({
   openTrades: Trade[];
   closeTime: string | null;
   showCountdown: boolean;
+  showHourly?: boolean;
   onBetPlaced: () => void;
 }) {
   const [amount, setAmount] = useState("25");
@@ -176,6 +179,8 @@ export default function DayWidget({
           </div>
         )}
       </div>
+
+      {showHourly && <HourlyStrip />}
 
       {openTrades.length > 0 && (
         <div className="mt-5 space-y-2 border-t border-white/10 pt-4">

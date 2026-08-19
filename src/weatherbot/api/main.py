@@ -1,3 +1,4 @@
+import time
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -13,6 +14,7 @@ from weatherbot.api.settle import kalshi_fee, resolve_pending_trades
 from weatherbot.api.trading import BetError, execute_bet
 from weatherbot.backtest.calibration import run as run_calibration
 from weatherbot.db import get_session
+from weatherbot.ingest.nws_hourly import get_hourly_view
 
 app = FastAPI(title="Mikayla's Weather Bot API")
 
@@ -169,6 +171,27 @@ def get_recommendations():
     """Model probability vs. current market price for every open KXHIGHNY
     market, fee-adjusted. Forward-looking only — see recommendations.py."""
     return build_recommendations()
+
+
+_hourly_cache: dict = {"data": None, "fetched_at": 0.0}
+_HOURLY_CACHE_TTL_SECONDS = 300  # NWS station observations update ~hourly anyway
+
+
+@app.get("/api/weather/hourly")
+def get_hourly_weather():
+    """Current conditions + past/future hourly temps for the Today card,
+    live from NWS (KNYC/Central Park) — not stored, so cached briefly in
+    memory to avoid re-fetching on every dashboard poll."""
+    now = time.monotonic()
+    if _hourly_cache["data"] is not None and now - _hourly_cache["fetched_at"] < _HOURLY_CACHE_TTL_SECONDS:
+        return _hourly_cache["data"]
+    try:
+        data = get_hourly_view()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch hourly weather: {e}")
+    _hourly_cache["data"] = data
+    _hourly_cache["fetched_at"] = now
+    return data
 
 
 @app.get("/api/calibration")

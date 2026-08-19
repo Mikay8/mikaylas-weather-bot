@@ -262,3 +262,19 @@ export async function backfillKalshiMarkets() {
   }
   return res.json();
 }
+
+export type HourlyPoint = {
+  timestamp: string;
+  temperature: number;
+  condition: string | null;
+};
+
+export type HourlyWeather = {
+  current: HourlyPoint | null;
+  past: HourlyPoint[];
+  future: HourlyPoint[];
+};
+
+export function fetchHourlyWeather() {
+  return getJSON<HourlyWeather>("/api/weather/hourly");
+}

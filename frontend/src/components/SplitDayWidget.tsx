@@ -75,6 +75,7 @@ export default function SplitDayWidget({
             openTrades={today.openTrades}
             closeTime={today.closeTime}
             showCountdown
+            showHourly
             onBetPlaced={onBetPlaced}
           />
         </div>
