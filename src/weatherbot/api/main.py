@@ -1,3 +1,4 @@
+import os
 import time
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -18,9 +19,14 @@ from weatherbot.ingest.nws_hourly import get_hourly_view
 
 app = FastAPI(title="Mikayla's Weather Bot API")
 
+_web_origin = os.environ.get("WEB_PUBLIC_URL", "").strip()
+_allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+if _web_origin:
+    _allowed_origins.append(_web_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # local dev only; tighten before any public deploy
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

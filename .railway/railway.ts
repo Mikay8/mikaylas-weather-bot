@@ -70,7 +70,50 @@ export default defineRailway(() => {
     env: sharedEnv,
   });
 
+  const api = service("api", {
+    ...repo,
+    build: { buildCommand: "pip install -r requirements.txt" },
+    deploy: {
+      // Fixed PORT (not Railway's auto-injected one) so it always matches
+      // networking.serviceDomains below.
+      startCommand: "uvicorn weatherbot.api.main:app --host 0.0.0.0 --port 8000",
+      restartPolicyType: "ON_FAILURE",
+    },
+    networking: { serviceDomains: { api: { port: 8000 } } },
+    env: {
+      ...sharedEnv,
+      // Restricts CORS to just the deployed frontend (see main.py) instead
+      // of the local-dev allow_origins=["*"] default.
+      WEB_PUBLIC_URL: "https://${{web.RAILWAY_PUBLIC_DOMAIN}}",
+    },
+  });
+
+  const web = service("web", {
+    ...repo,
+    build: { buildCommand: "cd frontend && npm ci && npm run build" },
+    deploy: {
+      startCommand: "cd frontend && npx next start --port 3000",
+      restartPolicyType: "ON_FAILURE",
+    },
+    networking: { serviceDomains: { web: { port: 3000 } } },
+    env: {
+      // Next.js inlines NEXT_PUBLIC_* at build time, not runtime, so this
+      // must resolve before `npm run build` runs. Railway resolves
+      // ${{service.OUTPUT}} template refs before the build step.
+      NEXT_PUBLIC_API_URL: "https://${{api.RAILWAY_PUBLIC_DOMAIN}}",
+    },
+  });
+
   return project("mikaylas-weather-bot", {
-    resources: [Postgres, postgresVolume, forecastCron, marketCron, settlementCron, botCron],
+    resources: [
+      Postgres,
+      postgresVolume,
+      forecastCron,
+      marketCron,
+      settlementCron,
+      botCron,
+      api,
+      web,
+    ],
   });
 });
