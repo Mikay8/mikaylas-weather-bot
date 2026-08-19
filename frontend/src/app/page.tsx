@@ -148,20 +148,20 @@ export default function Home() {
 
   return (
     <>
-      <div className="sticky top-0 z-40 flex items-center justify-center gap-2.5 border-b border-[var(--paper-banner-border)] bg-[var(--paper-banner-bg)] px-7 py-2.5">
+      <div className="sticky top-0 z-40 flex items-center justify-center gap-2.5 border-b border-[var(--paper-banner-border)] bg-[var(--paper-banner-bg)] px-4 py-2.5 text-center sm:px-7">
         <span
-          className="inline-block h-[7px] w-[7px] rounded-full bg-[var(--accent-forecast)]"
+          className="inline-block h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--accent-forecast)]"
           style={{ boxShadow: "0 0 8px var(--accent-forecast)" }}
         />
-        <span className="font-mono text-xs font-semibold tracking-[0.12em] text-[var(--paper-banner-fg)]">
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-[var(--paper-banner-fg)] sm:text-xs sm:tracking-[0.12em]">
           SIMULATED / PAPER TRADING — no real orders are ever placed
         </span>
       </div>
 
-      <main className="mx-auto max-w-[1360px] px-7 pb-16 pt-8">
+      <main className="mx-auto max-w-[1360px] px-4 pb-16 pt-8 sm:px-7">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-6">
           <div>
-            <h1 className="text-[26px] font-bold tracking-tight">Mikayla&apos;s Weather Bot</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-[26px]">Mikayla&apos;s Weather Bot</h1>
             <p className="mt-1.5 font-mono text-[13px] text-[var(--foreground-secondary)]">
               NYC daily-high forecasts vs. Kalshi KXHIGHNY · paper trading only
             </p>

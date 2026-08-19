@@ -111,9 +111,9 @@ export default function DayWidget({
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-6">
-        <div>
+        <div className="min-w-0">
           <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/60">
             New York, NY
           </div>

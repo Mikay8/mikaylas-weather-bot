@@ -80,7 +80,7 @@ export default function SplitDayWidget({
       className={`relative mb-5 overflow-hidden rounded-xl border border-[var(--card-border)] transition-[background] duration-1000 ${GRADIENTS[timeOfDay]}`}
     >
       <div className="grid grid-cols-1 divide-y divide-white/10 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-        <div className="p-7">
+        <div className="min-w-0 p-4 sm:p-7">
           <DayWidget
             label="Today"
             date={today.date}
@@ -95,7 +95,7 @@ export default function SplitDayWidget({
             onBetPlaced={onBetPlaced}
           />
         </div>
-        <div className="p-7">
+        <div className="min-w-0 p-4 sm:p-7">
           <DayWidget
             label="Tomorrow"
             date={tomorrow.date}
