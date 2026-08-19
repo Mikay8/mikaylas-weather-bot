@@ -253,3 +253,12 @@ export async function backfillHistorical(days = 365) {
   }
   return res.json();
 }
+
+export async function backfillKalshiMarkets() {
+  const res = await fetch(`${API_URL}/api/settings/backfill-kalshi-markets`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || "Kalshi market backfill failed");
+  }
+  return res.json();
+}

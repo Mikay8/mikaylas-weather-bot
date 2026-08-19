@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { backfillHistorical, backfillSettlements } from "@/lib/api";
+import { backfillHistorical, backfillKalshiMarkets, backfillSettlements } from "@/lib/api";
 
 export default function BackfillCard({ onDone }: { onDone: () => void }) {
   const [runningRecent, setRunningRecent] = useState(false);
   const [runningHistorical, setRunningHistorical] = useState(false);
+  const [runningKalshi, setRunningKalshi] = useState(false);
   const [recentResult, setRecentResult] = useState<string | null>(null);
   const [historicalResult, setHistoricalResult] = useState<string | null>(null);
+  const [kalshiResult, setKalshiResult] = useState<string | null>(null);
   const [days, setDays] = useState("365");
 
   async function handleRecent() {
@@ -43,6 +45,22 @@ export default function BackfillCard({ onDone }: { onDone: () => void }) {
       setHistoricalResult(e instanceof Error ? e.message : "Historical backfill failed");
     } finally {
       setRunningHistorical(false);
+    }
+  }
+
+  async function handleKalshi() {
+    setRunningKalshi(true);
+    setKalshiResult(null);
+    try {
+      const res = await backfillKalshiMarkets();
+      setKalshiResult(
+        `${res.row_count} price snapshots across ${res.market_count} markets (${res.earliest} → ${res.latest}).`
+      );
+      onDone();
+    } catch (e) {
+      setKalshiResult(e instanceof Error ? e.message : "Kalshi backfill failed");
+    } finally {
+      setRunningKalshi(false);
     }
   }
 
@@ -93,6 +111,28 @@ export default function BackfillCard({ onDone }: { onDone: () => void }) {
         </button>
         {recentResult && (
           <p className="font-mono text-xs text-[var(--foreground-secondary)]">{recentResult}</p>
+        )}
+      </div>
+
+      <div className="space-y-2 border-t border-[var(--card-border)] pt-4">
+        <p className="text-sm font-medium">Kalshi market price history</p>
+        <p className="text-xs text-[var(--foreground-secondary)]">
+          Pulls hourly bid/ask/price history for settled KXHIGHNY markets from Kalshi&apos;s
+          candlesticks API. Only backfills markets that closed on or after 2026-08-14 — the date
+          Kalshi switched KXHIGHNY&apos;s settlement source from NWS to The Weather Company —
+          since mixing in older data would blend two different settlement regimes. Kalshi&apos;s
+          API also only exposes settled markets back to roughly late June regardless, so this
+          isn&apos;t a deep multi-year archive the way the weather backfill above is.
+        </p>
+        <button
+          onClick={handleKalshi}
+          disabled={runningKalshi}
+          className="rounded-sm border border-[var(--card-border)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--table-head-bg)] disabled:opacity-50"
+        >
+          {runningKalshi ? "Backfilling…" : "Backfill Kalshi market history"}
+        </button>
+        {kalshiResult && (
+          <p className="font-mono text-xs text-[var(--foreground-secondary)]">{kalshiResult}</p>
         )}
       </div>
     </div>

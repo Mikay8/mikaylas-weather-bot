@@ -12,6 +12,8 @@ from sqlalchemy import text
 
 from weatherbot.backtest.iem_forecast_backfill import run as run_iem_forecast_backfill
 from weatherbot.backtest.iem_settlement_backfill import run as run_iem_settlement_backfill
+from weatherbot.backtest.kalshi_market_backfill import SETTLEMENT_SOURCE_CUTOFF
+from weatherbot.backtest.kalshi_market_backfill import run as run_kalshi_backfill
 from weatherbot.db import get_session
 from weatherbot.ingest.nws_settlement import run as run_settlement_backfill
 
@@ -150,6 +152,41 @@ def backfill_historical(days: int = 365):
         return {
             "settlements": {"earliest": settlements[0], "latest": settlements[1], "row_count": settlements[2]},
             "forecasts": {"earliest": forecasts[0], "latest": forecasts[1], "row_count": forecasts[2]},
+        }
+    finally:
+        session.close()
+
+
+@router.post("/backfill-kalshi-markets")
+def backfill_kalshi_markets():
+    """Backfill historical KXHIGHNY price/bid/ask history from Kalshi's
+    candlesticks API. Only pulls markets that closed on/after 2026-08-14,
+    the date Kalshi's series metadata confirms they switched settlement
+    source from NWS to The Weather Company — mixing in older data would
+    blend two different settlement regimes. See kalshi_market_backfill.py
+    for the full reasoning."""
+    try:
+        run_kalshi_backfill()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Kalshi backfill failed: {e}")
+
+    session = get_session()
+    try:
+        row = session.execute(
+            text(
+                """
+                SELECT MIN(timestamp), MAX(timestamp), COUNT(*), COUNT(DISTINCT contract_id)
+                FROM market_snapshots
+                WHERE timestamp >= :cutoff
+                """
+            ),
+            {"cutoff": SETTLEMENT_SOURCE_CUTOFF},
+        ).fetchone()
+        return {
+            "earliest": row[0],
+            "latest": row[1],
+            "row_count": row[2],
+            "market_count": row[3],
         }
     finally:
         session.close()
