@@ -19,10 +19,8 @@ from weatherbot.ingest.nws_hourly import get_hourly_view
 
 app = FastAPI(title="Mikayla's Weather Bot API")
 
-_web_origin = os.environ.get("WEB_PUBLIC_URL", "").strip()
-_allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
-if _web_origin:
-    _allowed_origins.append(_web_origin)
+_web_origins = [o.strip() for o in os.environ.get("WEB_PUBLIC_URL", "").split(",") if o.strip()]
+_allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000", *_web_origins]
 
 app.add_middleware(
     CORSMiddleware,

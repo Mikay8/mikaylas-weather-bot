@@ -1,11 +1,16 @@
 import { defineRailway, github, postgres, project, service, volume } from "railway/iac";
 
 export default defineRailway(() => {
-  const Postgres = postgres("Postgres", { region: "sfo" });
+  // Everything was actually running in sfo (US West) despite no explicit
+  // intent to be there. Moved to us-east4 — closer to NWS/Kalshi (both
+  // US-East-hosted) and to the user.
+  const REGION = "us-east4";
+
+  const Postgres = postgres("Postgres", { region: REGION });
   const postgresVolume = volume("postgres-volume", {
     alerts: { usage: { "100": {}, "80": {}, "95": {} } },
     allowOnlineResize: true,
-    region: "sfo",
+    region: REGION,
     sizeMB: 5000,
   });
 
@@ -19,6 +24,18 @@ export default defineRailway(() => {
     PYTHONPATH: "src",
   };
 
+  // Actual usage checked via Railway's 24h metrics before picking these:
+  // every service was sitting at <1.5% CPU and well under 500MB. These
+  // caps still give headroom above observed peaks — this is a single-user
+  // paper-trading dashboard, not a service that needs to scale.
+  const CRON_LIMITS = { containers: { cpu: 0.5, memoryBytes: 512 * 1024 * 1024 } };
+  const API_LIMITS = {
+    // Highest observed of the bunch (~460MB, ~1.2% CPU) — it's the one
+    // holding pandas/numpy/scipy/statsmodels/scikit-learn resident.
+    containers: { cpu: 1, memoryBytes: 1024 * 1024 * 1024 },
+  };
+  const WEB_LIMITS = { containers: { cpu: 0.5, memoryBytes: 512 * 1024 * 1024 } };
+
   const forecastCron = service("forecast-cron", {
     ...repo,
     build: { buildCommand: "pip install -r requirements.txt" },
@@ -26,6 +43,8 @@ export default defineRailway(() => {
       startCommand: "python3 -m weatherbot.ingest.nws_forecast",
       cronSchedule: "0 6,11,17,22 * * *", // 4x/day, aligned with NWS forecast update cadence
       restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
     },
     env: sharedEnv,
   });
@@ -37,6 +56,8 @@ export default defineRailway(() => {
       startCommand: "python3 -m weatherbot.ingest.kalshi_market",
       cronSchedule: "0 * * * *", // hourly
       restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
     },
     env: sharedEnv,
   });
@@ -52,6 +73,8 @@ export default defineRailway(() => {
       // observed publish time instead of the old noon-UTC guess.
       cronSchedule: "40 6 * * *",
       restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
     },
     env: sharedEnv,
   });
@@ -66,6 +89,8 @@ export default defineRailway(() => {
       // immediately if the bot is disabled in bot_settings (off by default).
       cronSchedule: "10 * * * *",
       restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
     },
     env: sharedEnv,
   });
@@ -78,13 +103,16 @@ export default defineRailway(() => {
       // networking.serviceDomains below.
       startCommand: "uvicorn weatherbot.api.main:app --host 0.0.0.0 --port 8000",
       restartPolicyType: "ON_FAILURE",
+      region: REGION,
+      limitOverride: API_LIMITS,
     },
     networking: { serviceDomains: { api: { port: 8000 } } },
     env: {
       ...sharedEnv,
-      // Restricts CORS to just the deployed frontend (see main.py) instead
-      // of the local-dev allow_origins=["*"] default.
-      WEB_PUBLIC_URL: "https://${{web.RAILWAY_PUBLIC_DOMAIN}}",
+      // Restricts CORS to just the deployed frontend + mikayladhill.com
+      // (see main.py) instead of the local-dev allow_origins=["*"] default.
+      // main.py splits this on commas.
+      WEB_PUBLIC_URL: "https://${{web.RAILWAY_PUBLIC_DOMAIN}},https://www.mikayladhill.com",
     },
   });
 
@@ -97,6 +125,8 @@ export default defineRailway(() => {
     deploy: {
       startCommand: "npx next start --port 3000",
       restartPolicyType: "ON_FAILURE",
+      region: REGION,
+      limitOverride: WEB_LIMITS,
     },
     networking: { serviceDomains: { web: { port: 3000 } } },
     env: {
