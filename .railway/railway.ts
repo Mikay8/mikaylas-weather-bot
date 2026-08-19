@@ -46,7 +46,11 @@ export default defineRailway(() => {
     build: { buildCommand: "pip install -r requirements.txt" },
     deploy: {
       startCommand: "python3 -m weatherbot.ingest.nws_settlement",
-      cronSchedule: "0 12 * * *", // once/day, after NWS publishes the morning CLI report
+      // NWS's daily CLI report (containing the prior day's final actual high)
+      // consistently publishes 06:17-06:33 UTC — checked live issuance times
+      // across two weeks of history. Run a few minutes after the latest
+      // observed publish time instead of the old noon-UTC guess.
+      cronSchedule: "40 6 * * *",
       restartPolicyType: "NEVER",
     },
     env: sharedEnv,

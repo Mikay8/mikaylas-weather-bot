@@ -127,7 +127,9 @@ def list_current_markets():
                 """
                 SELECT DISTINCT ON (contract_id)
                     contract_id, timestamp, target_date, bracket_low, bracket_high,
-                    strike_type, yes_bid, yes_ask, implied_prob, volume, open_interest
+                    strike_type, yes_bid, yes_ask, implied_prob, volume, open_interest,
+                    raw_response ->> 'yes_sub_title' AS kalshi_label,
+                    raw_response ->> 'close_time' AS close_time
                 FROM market_snapshots
                 ORDER BY contract_id, timestamp DESC
                 """

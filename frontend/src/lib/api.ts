@@ -13,6 +13,8 @@ export type MarketSnapshot = {
   bracket_low: number | null;
   bracket_high: number | null;
   strike_type: "greater" | "less" | "between" | null;
+  kalshi_label: string | null;
+  close_time: string | null;
   yes_bid: number | null;
   yes_ask: number | null;
   implied_prob: number | null;
@@ -72,6 +74,7 @@ export type Recommendation = {
   bracket_low: number | null;
   bracket_high: number | null;
   strike_type: "greater" | "less" | "between";
+  kalshi_label: string | null;
   predicted_high: number;
   model_prob: number;
   market_prob: number;

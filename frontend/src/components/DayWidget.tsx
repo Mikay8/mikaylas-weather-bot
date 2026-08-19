@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { ForecastVsActual, Recommendation } from "@/lib/api";
+import type { Recommendation, Trade } from "@/lib/api";
 import { placeBet } from "@/lib/api";
+import Countdown from "@/components/Countdown";
 
-function bracketLabel(r: Recommendation): string {
+function bracketLabel(r: { kalshi_label?: string | null; strike_type?: string | null; bracket_low?: number | null; bracket_high?: number | null }): string {
+  if (r.kalshi_label) return r.kalshi_label;
   if (r.strike_type === "greater") return `> ${r.bracket_low}°F`;
   if (r.strike_type === "less") return `< ${r.bracket_high}°F`;
   return `${r.bracket_low}–${r.bracket_high}°F`;
@@ -14,15 +16,64 @@ function pct(v: number): string {
   return `${Math.round(v * 100)}%`;
 }
 
-export default function TomorrowWidget({
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-9 w-9 text-[#f5c451]" aria-hidden>
+      <circle cx="12" cy="12" r="4.5" fill="currentColor" />
+      <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <path d="M12 2.5v2.5M12 19v2.5M21.5 12H19M5 12H2.5M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8M18.4 18.4l-1.8-1.8M7.4 7.4 5.6 5.6" />
+      </g>
+    </svg>
+  );
+}
+
+function SnowflakeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-9 w-9 text-[#7ec8f0]" aria-hidden>
+      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2.5v19M4.5 7l15 10M19.5 7l-15 10" />
+        <path d="M12 2.5 9.8 4.6M12 2.5l2.2 2.1M12 21.5l-2.2-2.1M12 21.5l2.2-2.1" />
+        <path d="M4.5 7 6.9 6.6M4.5 7l.6 2.4M19.5 7l-2.4-.4M19.5 7l-.6 2.4M19.5 17l-2.4.4M19.5 17l-.6-2.4M4.5 17l2.4.4M4.5 17l.6-2.4" />
+      </g>
+    </svg>
+  );
+}
+
+function CloseCountdown({ closeTime }: { closeTime: string | null }) {
+  if (!closeTime) return null;
+  return (
+    <div className="mt-2 flex items-center gap-1.5 font-mono text-xs text-white/70">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+      Market closes in{" "}
+      <Countdown
+        closeTime={closeTime}
+        className="font-semibold text-white"
+        urgentClassName="font-semibold text-[#e2564f]"
+      />
+    </div>
+  );
+}
+
+export default function DayWidget({
+  label,
   date,
   forecastHigh,
   topRecommendation,
+  openTrades,
+  closeTime,
+  showCountdown,
   onBetPlaced,
 }: {
+  label: string;
   date: string;
   forecastHigh: number | null;
   topRecommendation: Recommendation | null;
+  openTrades: Trade[];
+  closeTime: string | null;
+  showCountdown: boolean;
   onBetPlaced: () => void;
 }) {
   const [amount, setAmount] = useState("25");
@@ -52,16 +103,25 @@ export default function TomorrowWidget({
   }
 
   return (
-    <div className="relative mb-5 overflow-hidden rounded-xl border border-[var(--card-border)] bg-gradient-to-br from-[#1a2a42] via-[#2a2450] to-[#3a2450] p-7">
+    <div>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
-          <div className="text-[13px] font-semibold text-white/85">Tomorrow · {date}</div>
-          <div className="mt-1.5 flex items-baseline gap-3">
-            <span className="text-[48px] font-light leading-none tracking-tight text-white">
-              {forecastHigh !== null ? `${forecastHigh}°` : "—"}
-            </span>
-            <span className="text-sm text-white/70">NWS forecast high</span>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/60">
+            New York, NY
           </div>
+          <div className="mt-1 text-[13px] font-semibold text-white/85">
+            {label} · {date}
+          </div>
+          <div className="mt-1.5 flex items-center gap-3">
+            {forecastHigh !== null && (forecastHigh >= 50 ? <SunIcon /> : <SnowflakeIcon />)}
+            <div className="flex items-baseline gap-3">
+              <span className="text-[48px] font-light leading-none tracking-tight text-white">
+                {forecastHigh !== null ? `${forecastHigh}°` : "—"}
+              </span>
+              <span className="text-sm text-white/70">NWS forecast high</span>
+            </div>
+          </div>
+          {showCountdown && <CloseCountdown closeTime={closeTime} />}
         </div>
 
         {topRecommendation ? (
@@ -111,10 +171,41 @@ export default function TomorrowWidget({
           </div>
         ) : (
           <div className="min-w-[260px] rounded-xl border border-white/20 bg-black/30 p-5 text-sm text-white/70 backdrop-blur">
-            No scoreable market for tomorrow yet.
+            No scoreable market for {label.toLowerCase()} yet.
           </div>
         )}
       </div>
+
+      {openTrades.length > 0 && (
+        <div className="mt-5 space-y-2 border-t border-white/10 pt-4">
+          <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-white/60">
+            Your active position{openTrades.length > 1 ? "s" : ""}
+          </div>
+          {openTrades.map((t) => (
+            <div
+              key={t.id}
+              className="flex items-center justify-between rounded-lg border border-white/15 bg-black/25 px-4 py-2.5"
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={
+                    "inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] " +
+                    (t.side === "yes"
+                      ? "border-[var(--yes-border)] bg-[var(--yes-bg)] text-[var(--yes-fg)]"
+                      : "border-[var(--no-border)] bg-[var(--no-bg)] text-[var(--no-fg)]")
+                  }
+                >
+                  {t.side}
+                </span>
+                <span className="font-mono text-xs text-white/90">{bracketLabel(t)}</span>
+              </div>
+              <span className="font-mono text-xs text-white/70">
+                {Math.round(t.price * 100)}¢ · ${t.size.toFixed(2)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {confirming && topRecommendation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

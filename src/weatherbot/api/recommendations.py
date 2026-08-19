@@ -16,7 +16,7 @@ from sqlalchemy import text
 
 from weatherbot.api.settle import kalshi_fee
 from weatherbot.backtest.calibration import load_paired_history
-from weatherbot.backtest.model import bracket_probability, fit_error_stats
+from weatherbot.backtest.model import bracket_probability, fit_error_stats_seasonal
 from weatherbot.db import get_session
 
 MIN_EDGE_THRESHOLD = 0.03  # fee-adjusted edge below this isn't worth surfacing
@@ -38,10 +38,9 @@ def _latest_predicted_high(session, target_date) -> float | None:
 
 
 def build_recommendations() -> list[dict]:
-    errors = [e for _, p, a in load_paired_history() for e in [a - p]]
-    if len(errors) < 2:
+    dated_errors = [(d, a - p) for d, p, a in load_paired_history()]
+    if len(dated_errors) < 2:
         return []
-    stats = fit_error_stats(errors)
 
     session = get_session()
     try:
@@ -51,7 +50,8 @@ def build_recommendations() -> list[dict]:
                 SELECT DISTINCT ON (ms.contract_id)
                     ms.contract_id, ms.target_date, ms.bracket_low, ms.bracket_high,
                     ms.strike_type, ms.yes_bid, ms.yes_ask, ms.implied_prob,
-                    ms.volume, ms.open_interest
+                    ms.volume, ms.open_interest,
+                    ms.raw_response ->> 'yes_sub_title' AS kalshi_label
                 FROM market_snapshots ms
                 LEFT JOIN settlements s ON s.date = ms.target_date
                 WHERE s.date IS NULL
@@ -69,6 +69,7 @@ def build_recommendations() -> list[dict]:
             if predicted_high is None:
                 continue
 
+            stats = fit_error_stats_seasonal(dated_errors, m.target_date)
             model_prob = bracket_probability(
                 predicted_high,
                 stats,
@@ -121,6 +122,7 @@ def build_recommendations() -> list[dict]:
                     "bracket_low": m.bracket_low,
                     "bracket_high": m.bracket_high,
                     "strike_type": m.strike_type,
+                    "kalshi_label": m.kalshi_label,
                     "predicted_high": predicted_high,
                     "model_prob": round(model_prob, 4),
                     "market_prob": round(market_prob, 4),

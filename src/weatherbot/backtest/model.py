@@ -14,8 +14,17 @@ station track closely and NWS has no independent error history yet.
 """
 
 from dataclasses import dataclass
+from datetime import date
 
 from scipy.stats import norm
+
+# Forecast error is seasonal (shoulder months like March run much noisier
+# than e.g. September - see /api/calibration by_month), so a single
+# year-round stdev overstates uncertainty in calm months and understates it
+# in volatile ones. This window pools same-season history (wrapping across
+# the year boundary) instead of blending all 12 months into one figure.
+SEASONAL_WINDOW_DAYS = 45
+MIN_SEASONAL_SAMPLES = 20  # fall back to the full-history fit below this
 
 
 @dataclass(frozen=True)
@@ -33,6 +42,35 @@ def fit_error_stats(errors: list[float]) -> ErrorStats:
     mean = sum(errors) / n
     var = sum((e - mean) ** 2 for e in errors) / (n - 1)
     return ErrorStats(bias=mean, stdev=var**0.5, n=n)
+
+
+def _day_of_year_distance(a: date, b: date) -> int:
+    """Circular distance in days between two dates' position in a 365-day
+    year (ignores actual year, wraps Dec->Jan) - e.g. distance from
+    Aug 19 to Aug 20 last year is 1, not ~365."""
+    doy_a = a.timetuple().tm_yday
+    doy_b = b.timetuple().tm_yday
+    diff = abs(doy_a - doy_b)
+    return min(diff, 365 - diff)
+
+
+def fit_error_stats_seasonal(
+    dated_errors: list[tuple[date, float]],
+    target_date: date,
+    window_days: int = SEASONAL_WINDOW_DAYS,
+    min_samples: int = MIN_SEASONAL_SAMPLES,
+) -> ErrorStats:
+    """Same as fit_error_stats, but fit only on history within `window_days`
+    of target_date's day-of-year (wrapping across year boundaries), so a
+    summer prediction uses summer-appropriate error stats instead of a
+    blend across all seasons. Falls back to the full history if the
+    seasonal window doesn't have enough samples yet to fit reliably."""
+    seasonal = [
+        e for d, e in dated_errors if _day_of_year_distance(d, target_date) <= window_days
+    ]
+    if len(seasonal) >= min_samples:
+        return fit_error_stats(seasonal)
+    return fit_error_stats([e for _, e in dated_errors])
 
 
 def bracket_probability(

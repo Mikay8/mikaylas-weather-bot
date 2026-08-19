@@ -5,6 +5,7 @@ import type { MarketSnapshot, Recommendation } from "@/lib/api";
 import { placeBet } from "@/lib/api";
 
 function bracketLabel(m: MarketSnapshot): string {
+  if (m.kalshi_label) return m.kalshi_label;
   if (m.strike_type === "greater") return `> ${m.bracket_low}°F`;
   if (m.strike_type === "less") return `< ${m.bracket_high}°F`;
   return `${m.bracket_low}–${m.bracket_high}°F`;

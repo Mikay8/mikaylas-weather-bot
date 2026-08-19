@@ -37,8 +37,8 @@ CRON_SERVICES = {
     "settlement": {
         "id": "cec2bf7d-05d8-46eb-b677-69da0f255fe2",
         "name": "settlement-cron",
-        "schedule": "0 12 * * *",
-        "schedule_label": "daily at noon UTC",
+        "schedule": "40 6 * * *",
+        "schedule_label": "daily at 6:40am UTC (just after NWS publishes the CLI report)",
     },
 }
 

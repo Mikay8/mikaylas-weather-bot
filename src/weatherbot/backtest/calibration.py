@@ -16,7 +16,7 @@ from datetime import date
 from scipy.stats import norm
 from sqlalchemy import text
 
-from weatherbot.backtest.model import ErrorStats, fit_error_stats
+from weatherbot.backtest.model import ErrorStats, fit_error_stats_seasonal
 from weatherbot.db import get_session
 
 MIN_TRAIN_DAYS = 30
@@ -105,13 +105,14 @@ def run_walk_forward(
     history: list[tuple[date, float, float]], min_train_days: int = MIN_TRAIN_DAYS
 ) -> CalibrationReport:
     """For each day past min_train_days, fit ErrorStats on all strictly-prior
-    days and score that day's prediction against it — no lookahead."""
+    days (seasonally weighted, matching the live recommendation engine) and
+    score that day's prediction against it — no lookahead."""
     report = CalibrationReport()
-    errors_so_far: list[float] = []
+    dated_errors_so_far: list[tuple[date, float]] = []
 
     for target_date, predicted_high, actual_high in history:
-        if len(errors_so_far) >= min_train_days:
-            stats: ErrorStats = fit_error_stats(errors_so_far)
+        if len(dated_errors_so_far) >= min_train_days:
+            stats: ErrorStats = fit_error_stats_seasonal(dated_errors_so_far, target_date)
             mean = predicted_high + stats.bias
             sd = stats.stdev
             lo68, hi68 = norm.interval(0.68, loc=mean, scale=sd)
@@ -130,7 +131,7 @@ def run_walk_forward(
                 )
             )
 
-        errors_so_far.append(actual_high - predicted_high)
+        dated_errors_so_far.append((target_date, actual_high - predicted_high))
 
     return report
 
