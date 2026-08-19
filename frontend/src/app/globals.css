@@ -1,23 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f7f5;
-  --foreground: #171717;
-  --card-bg: #ffffff;
-  --card-border: #e5e5e0;
-  --table-head-bg: #f2f2ef;
-  --accent-forecast: #2563eb;
-  --accent-actual: #ea580c;
-  --chart-grid: #e5e5e0;
-  --chart-axis: #737373;
-  --positive: #16a34a;
-  --negative: #dc2626;
-  --yes-bg: #dcfce7;
-  --yes-fg: #15803d;
-  --no-bg: #fee2e2;
-  --no-fg: #b91c1c;
-  --paper-banner-bg: #fef3c7;
-  --paper-banner-fg: #92400e;
+  --background: #0b0e12;
+  --foreground: #e8ecf0;
+  --foreground-secondary: #8b95a1;
+  --foreground-tertiary: #5c6570;
+  --card-bg: #12161c;
+  --card-border: #232a33;
+  --table-head-bg: #0e1116;
+  --row-border: #1a1f26;
+  --accent-forecast: #6fa8dc;
+  --accent-actual: #d9a441;
+  --chart-grid: #1c222a;
+  --chart-axis: #5c6570;
+  --positive: #5fb88a;
+  --negative: #e2564f;
+  --yes-bg: #16261c;
+  --yes-fg: #5fb88a;
+  --yes-border: #2c5a3e;
+  --no-bg: #261616;
+  --no-fg: #e2564f;
+  --no-border: #5a2c2c;
+  --paper-banner-bg: #0f1f2b;
+  --paper-banner-fg: #8fc7ee;
+  --paper-banner-border: #2c4f68;
+  --link-hover: #8fc0ea;
+  --input-bg: #0e1116;
 }
 
 @theme inline {
@@ -27,30 +35,17 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --card-bg: #141414;
-    --card-border: #262626;
-    --table-head-bg: #1a1a1a;
-    --accent-forecast: #60a5fa;
-    --accent-actual: #fb923c;
-    --chart-grid: #262626;
-    --chart-axis: #a3a3a3;
-    --positive: #4ade80;
-    --negative: #f87171;
-    --yes-bg: #14532d;
-    --yes-fg: #86efac;
-    --no-bg: #450a0a;
-    --no-fg: #fca5a5;
-    --paper-banner-bg: #451a03;
-    --paper-banner-fg: #fcd34d;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 6px;
 }

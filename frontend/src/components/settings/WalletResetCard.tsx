@@ -21,7 +21,7 @@ export default function WalletResetCard() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-[var(--foreground-secondary)]">
         Clears all paper trades and resets the balance. This cannot be undone.
       </p>
       <div className="flex items-center gap-2">
@@ -29,13 +29,13 @@ export default function WalletResetCard() {
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="w-28 rounded-md border border-[var(--card-border)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--accent-forecast)]"
+          className="w-28 rounded-sm border border-[var(--card-border)] bg-[var(--input-bg)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--accent-forecast)]"
           min={1}
         />
         {!confirming ? (
           <button
             onClick={() => setConfirming(true)}
-            className="rounded-md bg-[var(--no-bg)] px-3 py-1.5 text-sm font-medium text-[var(--no-fg)]"
+            className="rounded-sm border border-[var(--no-border)] bg-[var(--no-bg)] px-3 py-1.5 text-sm font-medium text-[var(--no-fg)]"
           >
             Reset wallet
           </button>
@@ -43,20 +43,20 @@ export default function WalletResetCard() {
           <>
             <button
               onClick={handleReset}
-              className="rounded-md bg-[var(--negative)] px-3 py-1.5 text-sm font-medium text-white"
+              className="rounded-sm bg-[var(--negative)] px-3 py-1.5 text-sm font-medium text-white"
             >
               Confirm reset
             </button>
             <button
               onClick={() => setConfirming(false)}
-              className="rounded-md px-3 py-1.5 text-sm text-neutral-500 hover:bg-neutral-500/10"
+              className="rounded-sm px-3 py-1.5 text-sm text-[var(--foreground-secondary)] hover:bg-white/5"
             >
               Cancel
             </button>
           </>
         )}
       </div>
-      {message && <p className="text-xs text-neutral-500">{message}</p>}
+      {message && <p className="text-xs text-[var(--foreground-secondary)]">{message}</p>}
     </div>
   );
 }

@@ -32,10 +32,10 @@ export default function DataFreshness({ status }: { status: DataStatus }) {
 
   return (
     <div
-      className={`mt-2 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-2.5 py-1 text-xs ${
+      className={`mt-2 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-sm border px-2.5 py-1 font-mono text-xs ${
         stale
-          ? "bg-[var(--no-bg)] text-[var(--no-fg)]"
-          : "bg-[var(--table-head-bg)] text-neutral-500"
+          ? "border-[var(--no-border)] bg-[var(--no-bg)] text-[var(--no-fg)]"
+          : "border-[var(--card-border)] bg-[var(--table-head-bg)] text-[var(--foreground-secondary)]"
       }`}
     >
       <span className="font-medium">{stale ? "⚠ Data may be stale" : "Data current"}</span>

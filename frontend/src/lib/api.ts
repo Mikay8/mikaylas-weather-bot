@@ -30,7 +30,7 @@ export type Trade = {
   target_date: string | null;
   bracket_low?: number | null;
   bracket_high?: number | null;
-  strike_type?: string | null;
+  strike_type?: "greater" | "less" | "between" | null;
   fee?: number | null;
   status?: string | null;
   pnl?: number | null;
@@ -64,6 +64,27 @@ export function fetchMarkets() {
 
 export function fetchWallet() {
   return getJSON<Wallet>("/api/wallet");
+}
+
+export type Recommendation = {
+  contract_id: string;
+  target_date: string;
+  bracket_low: number | null;
+  bracket_high: number | null;
+  strike_type: "greater" | "less" | "between";
+  predicted_high: number;
+  model_prob: number;
+  market_prob: number;
+  side: "yes" | "no";
+  edge: number;
+  fee_adjusted_edge: number | null;
+  recommend: boolean;
+  volume: number | null;
+  open_interest: number | null;
+};
+
+export function fetchRecommendations() {
+  return getJSON<Recommendation[]>("/api/recommendations");
 }
 
 export type DataStatus = {

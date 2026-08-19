@@ -26,11 +26,11 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+    <section className="rounded border border-[var(--card-border)] bg-[var(--card-bg)] p-6">
+      <h2 className="mb-1 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground-tertiary)]">
         {title}
       </h2>
-      <p className="mb-4 text-xs text-neutral-500">{description}</p>
+      <p className="mb-4 text-xs text-[var(--foreground-secondary)]">{description}</p>
       {children}
     </section>
   );
@@ -57,27 +57,37 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-[var(--paper-banner-bg)] px-4 py-2 text-center text-sm font-semibold text-[var(--paper-banner-fg)]">
-        <span aria-hidden="true">🧪</span>
-        PAPER TRADING — simulated money only. No real orders are ever placed.
+      <div className="sticky top-0 z-40 flex items-center justify-center gap-2.5 border-b border-[var(--paper-banner-border)] bg-[var(--paper-banner-bg)] px-7 py-2.5">
+        <span
+          className="inline-block h-[7px] w-[7px] rounded-full bg-[var(--accent-forecast)]"
+          style={{ boxShadow: "0 0 8px var(--accent-forecast)" }}
+        />
+        <span className="font-mono text-xs font-semibold tracking-[0.12em] text-[var(--paper-banner-fg)]">
+          SIMULATED / PAPER TRADING — no real orders are ever placed
+        </span>
       </div>
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 flex items-center justify-between">
+      <main className="mx-auto max-w-[1360px] px-7 pb-16 pt-8">
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-6">
           <div>
-            <h1 className="text-2xl font-semibold">Settings</h1>
-            <p className="text-sm text-neutral-500">
+            <h1 className="text-[26px] font-bold tracking-tight">Settings</h1>
+            <p className="mt-1.5 font-mono text-[13px] text-[var(--foreground-secondary)]">
               Data pipeline status, source health, and wallet controls.
             </p>
           </div>
-          <Link
-            href="/"
-            className="rounded-md border border-[var(--card-border)] px-3 py-1.5 text-sm text-neutral-500 hover:bg-[var(--table-head-bg)]"
-          >
-            ← Dashboard
-          </Link>
+          <div className="flex overflow-hidden rounded border border-[var(--card-border)]">
+            <Link
+              href="/"
+              className="px-[18px] py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
+            >
+              Dashboard
+            </Link>
+            <span className="border-l border-[var(--card-border)] bg-[#1a2028] px-[18px] py-[9px] font-sans text-[13px] font-semibold">
+              Settings
+            </span>
+          </div>
         </header>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <SettingsSection
             title="Cron jobs"
             description="Scheduled pulls running on Railway. 'Run now' triggers an immediate pull outside the schedule."

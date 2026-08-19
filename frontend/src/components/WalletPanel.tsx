@@ -13,12 +13,12 @@ export default function WalletPanel({ wallet }: { wallet: Wallet }) {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground-tertiary)]">
           Paper balance
         </p>
-        <p className="text-3xl font-semibold tabular-nums">{fmtUsd(wallet.balance)}</p>
+        <p className="font-mono text-3xl font-semibold tabular-nums">{fmtUsd(wallet.balance)}</p>
         <p
-          className={`text-sm font-medium tabular-nums ${
+          className={`font-mono text-sm font-medium tabular-nums ${
             pnlPositive ? "text-[var(--positive)]" : "text-[var(--negative)]"
           }`}
         >
@@ -29,52 +29,23 @@ export default function WalletPanel({ wallet }: { wallet: Wallet }) {
 
       {wallet.open_trades.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <p className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground-tertiary)]">
             Open positions ({wallet.open_trades.length})
           </p>
           <ul className="space-y-1.5">
             {wallet.open_trades.map((t) => (
               <li
                 key={t.id}
-                className="flex items-center justify-between rounded-md bg-[var(--table-head-bg)] px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-sm border border-[var(--card-border)] bg-[var(--table-head-bg)] px-3 py-2 text-sm"
               >
                 <div>
                   <span className="font-medium">{t.contract_id}</span>
-                  <span className="ml-2 text-xs text-neutral-500">
+                  <span className="ml-2 font-mono text-xs text-[var(--foreground-secondary)]">
                     {t.side.toUpperCase()} @ {Math.round(t.price * 100)}¢
                   </span>
                 </div>
-                <span className="tabular-nums text-neutral-500">{fmtUsd(t.size)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {wallet.settled_trades.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-            History ({wallet.settled_trades.length})
-          </p>
-          <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
-            {wallet.settled_trades.map((t) => (
-              <li
-                key={t.id}
-                className="flex items-center justify-between rounded-md bg-[var(--table-head-bg)] px-3 py-2 text-sm"
-              >
-                <div>
-                  <span className="font-medium">{t.contract_id}</span>
-                  <span className="ml-2 text-xs text-neutral-500">
-                    {t.side.toUpperCase()} @ {Math.round(t.price * 100)}¢
-                  </span>
-                </div>
-                <span
-                  className={`tabular-nums font-medium ${
-                    (t.pnl ?? 0) >= 0 ? "text-[var(--positive)]" : "text-[var(--negative)]"
-                  }`}
-                >
-                  {(t.pnl ?? 0) >= 0 ? "+" : ""}
-                  {fmtUsd(t.pnl ?? 0)}
+                <span className="font-mono tabular-nums text-[var(--foreground-secondary)]">
+                  {fmtUsd(t.size)}
                 </span>
               </li>
             ))}
@@ -82,8 +53,10 @@ export default function WalletPanel({ wallet }: { wallet: Wallet }) {
         </div>
       )}
 
-      {wallet.open_trades.length === 0 && wallet.settled_trades.length === 0 && (
-        <p className="text-sm text-neutral-500">No paper trades yet — place a bet below.</p>
+      {wallet.open_trades.length === 0 && (
+        <p className="text-sm text-[var(--foreground-secondary)]">
+          No open positions. See Trade History below for past results.
+        </p>
       )}
     </div>
   );

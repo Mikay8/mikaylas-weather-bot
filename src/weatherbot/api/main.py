@@ -6,8 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 
+from weatherbot.api.recommendations import build_recommendations
 from weatherbot.api.settings import router as settings_router
 from weatherbot.api.settle import kalshi_fee, resolve_pending_trades
+from weatherbot.backtest.calibration import run as run_calibration
 from weatherbot.db import get_session
 
 app = FastAPI(title="Mikayla's Weather Bot API")
@@ -157,6 +159,23 @@ def market_history(contract_id: str, limit: int = 200):
         session.close()
 
 
+@app.get("/api/recommendations")
+def get_recommendations():
+    """Model probability vs. current market price for every open KXHIGHNY
+    market, fee-adjusted. Forward-looking only — see recommendations.py."""
+    return build_recommendations()
+
+
+@app.get("/api/calibration")
+def get_calibration(model_source: str = "GFS_MOS", min_train_days: int = 30):
+    """Walk-forward calibration backtest of the probability model against
+    real settlements (no lookahead). See calibration.py."""
+    try:
+        return run_calibration(model_source=model_source, min_train_days=min_train_days)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
 @app.get("/api/wallet")
 def get_wallet():
     session = get_session()
@@ -185,7 +204,7 @@ def get_wallet():
                 text(
                     """
                     SELECT id, contract_id, timestamp, side, price, size, target_date,
-                           status, pnl
+                           bracket_low, bracket_high, strike_type, fee, status, pnl
                     FROM trades
                     WHERE status IN ('settled_win', 'settled_loss') AND is_paper_trade = TRUE
                     ORDER BY timestamp DESC

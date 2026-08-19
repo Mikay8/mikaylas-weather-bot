@@ -50,7 +50,7 @@ export default function BackfillCard({ onDone }: { onDone: () => void }) {
     <div className="space-y-5">
       <div className="space-y-2">
         <p className="text-sm font-medium">Historical backfill (IEM Mesonet)</p>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-[var(--foreground-secondary)]">
           Pulls both settlements and next-day GFS MOS forecasts from IEM&apos;s free archive
           (back to 2000+) — this is the real Phase 2 backtest dataset. Runs sequentially, one
           request per day, so a full year takes a few minutes.
@@ -60,24 +60,26 @@ export default function BackfillCard({ onDone }: { onDone: () => void }) {
             type="number"
             value={days}
             onChange={(e) => setDays(e.target.value)}
-            className="w-24 rounded-md border border-[var(--card-border)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--accent-forecast)]"
+            className="w-24 rounded-sm border border-[var(--card-border)] bg-[var(--input-bg)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--accent-forecast)]"
             min={1}
           />
-          <span className="text-xs text-neutral-500">days back from today</span>
+          <span className="text-xs text-[var(--foreground-secondary)]">days back from today</span>
           <button
             onClick={handleHistorical}
             disabled={runningHistorical}
-            className="rounded-md bg-[var(--accent-forecast)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-sm bg-[var(--accent-forecast)] px-3 py-1.5 text-sm font-medium text-[#0b0e12] disabled:opacity-50"
           >
             {runningHistorical ? "Backfilling…" : "Run historical backfill"}
           </button>
         </div>
-        {historicalResult && <p className="text-xs text-neutral-500">{historicalResult}</p>}
+        {historicalResult && (
+          <p className="font-mono text-xs text-[var(--foreground-secondary)]">{historicalResult}</p>
+        )}
       </div>
 
       <div className="space-y-2 border-t border-[var(--card-border)] pt-4">
         <p className="text-sm font-medium">Quick NWS catch-up</p>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-[var(--foreground-secondary)]">
           NWS only exposes ~6–7 days of CLI report history — this just catches recent
           settlements up to what NWS currently has, using the same source as the live
           settlement-cron job.
@@ -85,11 +87,13 @@ export default function BackfillCard({ onDone }: { onDone: () => void }) {
         <button
           onClick={handleRecent}
           disabled={runningRecent}
-          className="rounded-md border border-[var(--card-border)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--table-head-bg)] disabled:opacity-50"
+          className="rounded-sm border border-[var(--card-border)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--table-head-bg)] disabled:opacity-50"
         >
           {runningRecent ? "Backfilling…" : "Backfill settlements (last ~7 days)"}
         </button>
-        {recentResult && <p className="text-xs text-neutral-500">{recentResult}</p>}
+        {recentResult && (
+          <p className="font-mono text-xs text-[var(--foreground-secondary)]">{recentResult}</p>
+        )}
       </div>
     </div>
   );

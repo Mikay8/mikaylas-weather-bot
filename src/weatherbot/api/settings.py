@@ -184,9 +184,9 @@ DEPLOYMENTS_QUERY = """
 query($serviceId: String!, $environmentId: String!) {
   deployments(
     input: { serviceId: $serviceId, environmentId: $environmentId }
-    first: 1
+    first: 10
   ) {
-    edges { node { id status createdAt updatedAt } }
+    edges { node { id status meta createdAt updatedAt } }
   }
 }
 """
@@ -196,6 +196,11 @@ mutation($serviceId: String!, $environmentId: String!) {
   serviceInstanceDeployV2(serviceId: $serviceId, environmentId: $environmentId)
 }
 """
+
+# Redeploys (triggered by a git push, reason="deploy"/"redeploy") build a fresh
+# image but don't represent the script actually executing on schedule — only
+# reason="cron" (or none, on older deployments) reflects a real scheduled run.
+_NON_CRON_REASONS = {"deploy", "redeploy"}
 
 
 @router.get("/cron-status")
@@ -213,10 +218,23 @@ def cron_status():
                 {"serviceId": svc["id"], "environmentId": RAILWAY_ENVIRONMENT_ID},
             )
             edges = data["deployments"]["edges"]
-            if edges:
-                node = edges[0]["node"]
-                entry["last_run_status"] = node["status"]
-                entry["last_run_at"] = node["createdAt"]
+            run_node = next(
+                (
+                    e["node"]
+                    for e in edges
+                    if e["node"].get("meta", {}).get("reason") not in _NON_CRON_REASONS
+                ),
+                None,
+            )
+            if run_node:
+                entry["last_run_status"] = run_node["status"]
+                entry["last_run_at"] = run_node["createdAt"]
+                skipped_reason = run_node.get("meta", {}).get("skippedReason")
+                if skipped_reason:
+                    entry["last_run_detail"] = skipped_reason
+                config_errors = run_node.get("meta", {}).get("configErrors")
+                if config_errors:
+                    entry["last_run_detail"] = "; ".join(config_errors)
             else:
                 entry["last_run_status"] = "NEVER_RUN"
                 entry["last_run_at"] = None

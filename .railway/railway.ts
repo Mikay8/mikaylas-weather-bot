@@ -13,6 +13,10 @@ export default defineRailway(() => {
   const sharedEnv = {
     DATABASE_URL: Postgres.env.DATABASE_URL,
     NWS_USER_AGENT_CONTACT: "mikayla.hill8@gmail.com",
+    // weatherbot lives under src/, and no pyproject.toml installs it as a
+    // package (local dev works around this the same way) — without this,
+    // `python3 -m weatherbot...` fails with ModuleNotFoundError on every run.
+    PYTHONPATH: "src",
   };
 
   const forecastCron = service("forecast-cron", {
