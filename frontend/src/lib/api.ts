@@ -278,3 +278,20 @@ export type HourlyWeather = {
 export function fetchHourlyWeather() {
   return getJSON<HourlyWeather>("/api/weather/hourly");
 }
+
+export type ForecastAgreement = {
+  target_date: string;
+  nws_predicted_high: number;
+  open_meteo_predicted_high: number;
+  spread: number;
+  disagrees: boolean;
+};
+
+// 404s until both NWS and Open-Meteo have reported for tomorrow (e.g. right
+// after a fresh deploy, before both crons have run once) - not an error.
+export async function fetchForecastAgreement(): Promise<ForecastAgreement | null> {
+  const res = await fetch(`${API_URL}/api/forecast-agreement`, { cache: "no-store" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch forecast agreement: ${res.status}`);
+  return res.json();
+}

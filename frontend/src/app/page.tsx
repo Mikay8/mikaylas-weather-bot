@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import Countdown from "@/components/Countdown";
 import DataFreshness from "@/components/DataFreshness";
+import ForecastAgreementBanner from "@/components/ForecastAgreement";
 import ForecastChart from "@/components/ForecastChart";
 import ForecastDrift from "@/components/ForecastDrift";
 import MarketsTable from "@/components/MarketsTable";
@@ -179,6 +180,8 @@ export default function Home() {
             </Link>
           </div>
         </header>
+
+        <ForecastAgreementBanner />
 
         <SplitDayWidget
           today={{

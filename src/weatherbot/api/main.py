@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from weatherbot.api.bot import router as bot_router
+from weatherbot.api.forecast_agreement import get_forecast_agreement
 from weatherbot.api.recommendations import build_recommendations
 from weatherbot.api.settings import router as settings_router
 from weatherbot.api.settle import resolve_pending_trades
@@ -174,6 +175,20 @@ def get_recommendations():
     """Model probability vs. current market price for every open KXHIGHNY
     market, fee-adjusted. Forward-looking only — see recommendations.py."""
     return build_recommendations()
+
+
+@app.get("/api/forecast-agreement")
+def get_forecast_agreement_endpoint(target_date: date | None = None):
+    """NWS vs. Open-Meteo predicted high for target_date (defaults to
+    tomorrow, the bot's actual decision date) — see forecast_agreement.py."""
+    if target_date is None:
+        target_date = (datetime.now(timezone.utc) + timedelta(days=1)).date()
+    result = get_forecast_agreement(target_date)
+    if result is None:
+        raise HTTPException(
+            status_code=404, detail=f"No forecast pair yet for {target_date}"
+        )
+    return result
 
 
 _hourly_cache: dict = {"data": None, "fetched_at": 0.0}

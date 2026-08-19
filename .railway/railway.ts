@@ -49,6 +49,21 @@ export default defineRailway(() => {
     env: sharedEnv,
   });
 
+  const openMeteoCron = service("open-meteo-cron", {
+    ...repo,
+    build: { buildCommand: "pip install -r requirements.txt" },
+    deploy: {
+      startCommand: "python3 -m weatherbot.ingest.open_meteo_forecast",
+      // Same cadence as forecast-cron so a same-cycle NWS/Open-Meteo
+      // comparison is never comparing a fresh pull against a stale one.
+      cronSchedule: "0 6,11,17,22 * * *",
+      restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
+    },
+    env: sharedEnv,
+  });
+
   const marketCron = service("market-cron", {
     ...repo,
     build: { buildCommand: "pip install -r requirements.txt" },
@@ -142,6 +157,7 @@ export default defineRailway(() => {
       Postgres,
       postgresVolume,
       forecastCron,
+      openMeteoCron,
       marketCron,
       settlementCron,
       botCron,

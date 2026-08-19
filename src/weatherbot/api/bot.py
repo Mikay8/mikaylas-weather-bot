@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
 
+from weatherbot.api.forecast_agreement import DISAGREEMENT_THRESHOLD_F, get_forecast_agreement
 from weatherbot.api.recommendations import build_recommendations
 from weatherbot.api.trading import BetError, execute_bet
 from weatherbot.db import get_session
@@ -100,6 +101,7 @@ def run_bot_cycle() -> dict:
         recs = build_recommendations()
         placed = []
         skipped = []
+        agreement_cache: dict[str, bool] = {}
 
         for rec in recs:
             target_date = str(rec["target_date"])
@@ -109,6 +111,22 @@ def run_bot_cycle() -> dict:
                 continue
             if skip_if_position_exists and target_date in existing_dates:
                 skipped.append({"contract_id": rec["contract_id"], "reason": "position exists"})
+                continue
+
+            if target_date not in agreement_cache:
+                agreement = get_forecast_agreement(rec["target_date"])
+                # No Open-Meteo reading yet for this date (e.g. just added,
+                # or same-day where next-day forecast_days=3 hasn't caught up)
+                # - fail open rather than block every trade on a data gap.
+                agreement_cache[target_date] = agreement is not None and agreement["disagrees"]
+            if agreement_cache[target_date]:
+                skipped.append(
+                    {
+                        "contract_id": rec["contract_id"],
+                        "reason": "forecast sources disagree by >= "
+                        f"{DISAGREEMENT_THRESHOLD_F}F for {target_date}",
+                    }
+                )
                 continue
 
             try:
