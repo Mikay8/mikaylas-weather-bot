@@ -158,7 +158,7 @@ export default function Home() {
         </span>
       </div>
 
-      <main className="mx-auto max-w-[1360px] px-4 pb-16 pt-8 sm:px-7">
+      <main className="mx-auto min-w-0 w-full max-w-[1360px] px-4 pb-16 pt-8 sm:px-7">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-[26px]">Mikayla&apos;s Weather Bot</h1>
