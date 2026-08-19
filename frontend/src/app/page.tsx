@@ -224,16 +224,6 @@ export default function Home() {
             an hourly reading.
           </p>
           <ForecastChart data={forecastData} />
-          <div className="mt-4 flex gap-5">
-            <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-secondary)]">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--accent-forecast)]" />
-              Forecast high
-            </span>
-            <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-secondary)]">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--accent-actual)]" />
-              Actual high (NWS CLI)
-            </span>
-          </div>
         </div>
 
         <div className="mb-5 rounded border border-[var(--card-border)] bg-[var(--card-bg)] p-6">

@@ -105,18 +105,43 @@ def list_settlements(limit: int = 90):
 
 @app.get("/api/forecast-vs-actual")
 def forecast_vs_actual(limit: int = 90):
-    """Join next-day forecasts against realized settlements for charting."""
+    """Join next-day forecasts against realized settlements for charting.
+
+    Pivoted one row per target_date with predicted_high (NWS, the model's
+    input — see recommendations.py) alongside open_meteo_predicted_high as
+    a second column, rather than one row per model_source: with two
+    forecast sources now populating `forecasts`, the old row-per-source
+    join produced duplicate target_date rows once Open-Meteo started
+    accumulating history."""
     session = get_session()
     try:
         result = session.execute(
             text(
                 """
-                SELECT f.target_date, f.predicted_high, s.actual_high
-                FROM forecasts f
+                WITH latest_per_source AS (
+                    SELECT DISTINCT ON (target_date, model_source)
+                        target_date, model_source, predicted_high
+                    FROM forecasts
+                    ORDER BY target_date, model_source, forecast_time DESC
+                ),
+                dates AS (
+                    SELECT DISTINCT target_date FROM latest_per_source
+                    ORDER BY target_date DESC
+                    LIMIT :limit
+                )
+                SELECT
+                    d.target_date,
+                    nws.predicted_high,
+                    om.predicted_high AS open_meteo_predicted_high,
+                    s.actual_high
+                FROM dates d
+                LEFT JOIN latest_per_source nws
+                  ON nws.target_date = d.target_date AND nws.model_source = 'NWS'
+                LEFT JOIN latest_per_source om
+                  ON om.target_date = d.target_date AND om.model_source = 'OPEN_METEO'
                 LEFT JOIN settlements s
-                  ON s.date = f.target_date AND s.station = f.station
-                ORDER BY f.target_date DESC
-                LIMIT :limit
+                  ON s.date = d.target_date AND s.station = 'NYC_CENTRAL_PARK'
+                ORDER BY d.target_date DESC
                 """
             ),
             {"limit": limit},

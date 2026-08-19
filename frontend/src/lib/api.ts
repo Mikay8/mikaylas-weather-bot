@@ -3,6 +3,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 export type ForecastVsActual = {
   target_date: string;
   predicted_high: number | null;
+  open_meteo_predicted_high: number | null;
   actual_high: number | null;
 };
 
