@@ -6,9 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 
+from weatherbot.api.bot import router as bot_router
 from weatherbot.api.recommendations import build_recommendations
 from weatherbot.api.settings import router as settings_router
 from weatherbot.api.settle import kalshi_fee, resolve_pending_trades
+from weatherbot.api.trading import BetError, execute_bet
 from weatherbot.backtest.calibration import run as run_calibration
 from weatherbot.db import get_session
 
@@ -22,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(settings_router)
+app.include_router(bot_router)
 
 
 def _rows_to_dicts(result) -> list[dict]:
@@ -193,7 +196,7 @@ def get_wallet():
                 text(
                     """
                     SELECT id, contract_id, timestamp, side, price, size, target_date,
-                           bracket_low, bracket_high, strike_type, fee
+                           bracket_low, bracket_high, strike_type, fee, is_bot_trade
                     FROM trades
                     WHERE status = 'open' AND is_paper_trade = TRUE
                     ORDER BY timestamp DESC
@@ -206,7 +209,7 @@ def get_wallet():
                 text(
                     """
                     SELECT id, contract_id, timestamp, side, price, size, target_date,
-                           bracket_low, bracket_high, strike_type, fee, status, pnl
+                           bracket_low, bracket_high, strike_type, fee, status, pnl, is_bot_trade
                     FROM trades
                     WHERE status IN ('settled_win', 'settled_loss') AND is_paper_trade = TRUE
                     ORDER BY timestamp DESC
@@ -237,85 +240,14 @@ class PlaceBetRequest(BaseModel):
 
 @app.post("/api/wallet/bet")
 def place_bet(req: PlaceBetRequest):
-    if req.side not in ("yes", "no"):
-        raise HTTPException(status_code=400, detail="side must be 'yes' or 'no'")
-    if req.amount <= 0:
-        raise HTTPException(status_code=400, detail="amount must be positive")
-
     session = get_session()
     try:
-        market = session.execute(
-            text(
-                """
-                SELECT contract_id, target_date, bracket_low, bracket_high, strike_type,
-                       yes_bid, yes_ask
-                FROM market_snapshots
-                WHERE contract_id = :contract_id
-                ORDER BY timestamp DESC
-                LIMIT 1
-                """
-            ),
-            {"contract_id": req.contract_id},
-        ).fetchone()
-        if market is None:
-            raise HTTPException(status_code=404, detail="Market not found")
-        if market.target_date is None:
-            raise HTTPException(status_code=422, detail="Market has no resolvable target_date")
-
-        # You pay the ask side: yes_ask to buy YES, (1 - yes_bid) i.e. no_ask to buy NO.
-        if req.side == "yes":
-            price = market.yes_ask
-        else:
-            price = Decimal("1") - market.yes_bid if market.yes_bid is not None else None
-        if price is None or price <= 0 or price >= 1:
-            raise HTTPException(status_code=422, detail="No valid price available for this side")
-
-        amount = Decimal(str(req.amount))
-        wallet = session.execute(text("SELECT balance FROM paper_wallet LIMIT 1")).fetchone()
-        if wallet.balance < amount:
-            raise HTTPException(status_code=422, detail="Insufficient paper balance")
-
-        contracts = amount / price
-        fee = kalshi_fee(contracts, price)
-
-        now = datetime.now(timezone.utc)
-        session.execute(
-            text(
-                """
-                INSERT INTO trades
-                    (contract_id, timestamp, side, price, size, is_paper_trade, status,
-                     target_date, bracket_low, bracket_high, strike_type, fee)
-                VALUES
-                    (:contract_id, :timestamp, :side, :price, :size, TRUE, 'open',
-                     :target_date, :bracket_low, :bracket_high, :strike_type, :fee)
-                """
-            ),
-            {
-                "contract_id": req.contract_id,
-                "timestamp": now,
-                "side": req.side,
-                "price": price,
-                "size": amount,
-                "target_date": market.target_date,
-                "bracket_low": market.bracket_low,
-                "bracket_high": market.bracket_high,
-                "strike_type": market.strike_type,
-                "fee": fee,
-            },
-        )
-        session.execute(
-            text("UPDATE paper_wallet SET balance = balance - :amount, updated_at = now()"),
-            {"amount": amount},
-        )
-        session.commit()
-        return {
-            "contract_id": req.contract_id,
-            "side": req.side,
-            "price": float(price),
-            "contracts": float(contracts),
-            "fee": float(fee),
-            "amount_spent": float(amount),
-        }
+        try:
+            return execute_bet(session, req.contract_id, req.side, req.amount, is_bot_trade=False)
+        except BetError as e:
+            msg = str(e)
+            status_code = 404 if msg == "Market not found" else 422
+            raise HTTPException(status_code=status_code, detail=msg)
     finally:
         session.close()
 

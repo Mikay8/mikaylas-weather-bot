@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Recommendation, Trade } from "@/lib/api";
 import { placeBet } from "@/lib/api";
 import Countdown from "@/components/Countdown";
+import TradeSourceBadge from "@/components/TradeSourceBadge";
 
 function bracketLabel(r: { kalshi_label?: string | null; strike_type?: string | null; bracket_low?: number | null; bracket_high?: number | null }): string {
   if (r.kalshi_label) return r.kalshi_label;
@@ -179,7 +180,7 @@ export default function DayWidget({
       {openTrades.length > 0 && (
         <div className="mt-5 space-y-2 border-t border-white/10 pt-4">
           <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-white/60">
-            Your active position{openTrades.length > 1 ? "s" : ""}
+            Active position{openTrades.length > 1 ? "s" : ""}
           </div>
           {openTrades.map((t) => (
             <div
@@ -187,6 +188,7 @@ export default function DayWidget({
               className="flex items-center justify-between rounded-lg border border-white/15 bg-black/25 px-4 py-2.5"
             >
               <div className="flex items-center gap-2.5">
+                <TradeSourceBadge isBot={t.is_bot_trade} variant="dark" />
                 <span
                   className={
                     "inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] " +

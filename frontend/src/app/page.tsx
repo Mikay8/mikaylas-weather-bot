@@ -5,18 +5,21 @@ import { useCallback, useEffect, useState } from "react";
 import Countdown from "@/components/Countdown";
 import DataFreshness from "@/components/DataFreshness";
 import ForecastChart from "@/components/ForecastChart";
+import ForecastDrift from "@/components/ForecastDrift";
 import MarketsTable from "@/components/MarketsTable";
 import SplitDayWidget from "@/components/SplitDayWidget";
 import TradeHistory from "@/components/TradeHistory";
 import WalletPanel from "@/components/WalletPanel";
 import {
   fetchForecastVsActual,
+  fetchForecasts,
   fetchMarkets,
   fetchRecommendations,
   fetchStatus,
   fetchWallet,
   resolveTrades,
   type DataStatus,
+  type ForecastPull,
   type ForecastVsActual,
   type MarketSnapshot,
   type Recommendation,
@@ -25,6 +28,7 @@ import {
 
 export default function Home() {
   const [forecastData, setForecastData] = useState<ForecastVsActual[]>([]);
+  const [forecastPulls, setForecastPulls] = useState<ForecastPull[]>([]);
   const [markets, setMarkets] = useState<MarketSnapshot[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [wallet, setWallet] = useState<Wallet | null>(null);
@@ -36,14 +40,16 @@ export default function Home() {
   const loadAll = useCallback(async () => {
     try {
       await resolveTrades().catch(() => {});
-      const [f, m, w, s, r] = await Promise.all([
+      const [f, fp, m, w, s, r] = await Promise.all([
         fetchForecastVsActual(),
+        fetchForecasts(500).catch(() => []),
         fetchMarkets(),
         fetchWallet(),
         fetchStatus(),
         fetchRecommendations().catch(() => []),
       ]);
       setForecastData(f);
+      setForecastPulls(fp);
       setMarkets(m);
       setWallet(w);
       setStatus(s);
@@ -108,6 +114,18 @@ export default function Home() {
   const displayedRecommendations =
     marketsDay === "today" ? todayRecommendations : tomorrowRecommendations;
   const displayedDate = marketsDay === "today" ? nyToday : nyTomorrow;
+  const displayedCloseTime = marketsDay === "today" ? todayCloseTime : null;
+
+  const daysWithMultiplePulls = new Set(
+    Object.entries(
+      forecastPulls.reduce<Record<string, number>>((acc, p) => {
+        acc[p.target_date] = (acc[p.target_date] ?? 0) + 1;
+        return acc;
+      }, {})
+    )
+      .filter(([, count]) => count > 1)
+      .map(([date]) => date)
+  ).size;
 
   if (loading) {
     return (
@@ -272,6 +290,12 @@ export default function Home() {
               onBetPlaced={loadAll}
             />
           )}
+          <ForecastDrift
+            pulls={forecastPulls}
+            targetDate={displayedDate}
+            closeTime={displayedCloseTime}
+            daysWithMultiplePulls={daysWithMultiplePulls}
+          />
         </div>
 
         <div className="mt-5 rounded border border-[var(--card-border)] bg-[var(--card-bg)] p-6">

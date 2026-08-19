@@ -1,6 +1,7 @@
 "use client";
 
 import type { Wallet } from "@/lib/api";
+import TradeSourceBadge from "@/components/TradeSourceBadge";
 
 function fmtUsd(v: number): string {
   return v.toLocaleString(undefined, { style: "currency", currency: "USD" });
@@ -38,9 +39,10 @@ export default function WalletPanel({ wallet }: { wallet: Wallet }) {
                 key={t.id}
                 className="flex items-center justify-between rounded-sm border border-[var(--card-border)] bg-[var(--table-head-bg)] px-3 py-2 text-sm"
               >
-                <div>
+                <div className="flex items-center gap-2">
+                  <TradeSourceBadge isBot={t.is_bot_trade} />
                   <span className="font-medium">{t.contract_id}</span>
-                  <span className="ml-2 font-mono text-xs text-[var(--foreground-secondary)]">
+                  <span className="font-mono text-xs text-[var(--foreground-secondary)]">
                     {t.side.toUpperCase()} @ {Math.round(t.price * 100)}¢
                   </span>
                 </div>

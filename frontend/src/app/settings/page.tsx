@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import BackfillCard from "@/components/settings/BackfillCard";
+import BotControlCard from "@/components/settings/BotControlCard";
 import CronStatusCard from "@/components/settings/CronStatusCard";
 import DataCoverageCard from "@/components/settings/DataCoverageCard";
 import SourceHealthCard from "@/components/settings/SourceHealthCard";
@@ -88,6 +89,13 @@ export default function SettingsPage() {
         </header>
 
         <div className="space-y-5">
+          <SettingsSection
+            title="Auto-trading bot"
+            description="When enabled, automatically places a paper trade whenever a market's fee-adjusted edge clears your threshold — no manual review. Off by default."
+          >
+            <BotControlCard />
+          </SettingsSection>
+
           <SettingsSection
             title="Cron jobs"
             description="Scheduled pulls running on Railway. 'Run now' triggers an immediate pull outside the schedule."

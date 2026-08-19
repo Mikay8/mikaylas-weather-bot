@@ -56,7 +56,21 @@ export default defineRailway(() => {
     env: sharedEnv,
   });
 
+  const botCron = service("bot-cron", {
+    ...repo,
+    build: { buildCommand: "pip install -r requirements.txt" },
+    deploy: {
+      startCommand: "python3 -m weatherbot.api.bot",
+      // 10 min after market-cron's hourly pull so it always evaluates
+      // against a fresh snapshot, never data up to an hour stale. No-ops
+      // immediately if the bot is disabled in bot_settings (off by default).
+      cronSchedule: "10 * * * *",
+      restartPolicyType: "NEVER",
+    },
+    env: sharedEnv,
+  });
+
   return project("mikaylas-weather-bot", {
-    resources: [Postgres, postgresVolume, forecastCron, marketCron, settlementCron],
+    resources: [Postgres, postgresVolume, forecastCron, marketCron, settlementCron, botCron],
   });
 });

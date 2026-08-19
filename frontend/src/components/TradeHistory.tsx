@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { Trade } from "@/lib/api";
+import TradeSourceBadge from "@/components/TradeSourceBadge";
 
 function fmtUsd(v: number): string {
   return v.toLocaleString(undefined, { style: "currency", currency: "USD" });
@@ -97,6 +98,9 @@ export default function TradeHistory({
                 Date
               </th>
               <th className="px-3 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.08em]">
+                Source
+              </th>
+              <th className="px-3 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.08em]">
                 Bracket
               </th>
               <th className="px-3 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.08em]">
@@ -124,6 +128,9 @@ export default function TradeHistory({
               <tr key={t.id} className="border-b border-[var(--row-border)] last:border-0">
                 <td className="px-3 py-2 font-mono text-xs text-[var(--foreground-secondary)]">
                   {fmtDate(t.timestamp)}
+                </td>
+                <td className="px-3 py-2">
+                  <TradeSourceBadge isBot={t.is_bot_trade} />
                 </td>
                 <td className="px-3 py-2 font-medium">{bracketLabel(t)}</td>
                 <td className="px-3 py-2">

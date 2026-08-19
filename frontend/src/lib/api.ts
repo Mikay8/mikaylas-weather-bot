@@ -6,6 +6,15 @@ export type ForecastVsActual = {
   actual_high: number | null;
 };
 
+export type ForecastPull = {
+  id: number;
+  station: string;
+  forecast_time: string;
+  target_date: string;
+  predicted_high: number | null;
+  model_source: string;
+};
+
 export type MarketSnapshot = {
   contract_id: string;
   timestamp: string;
@@ -36,6 +45,7 @@ export type Trade = {
   fee?: number | null;
   status?: string | null;
   pnl?: number | null;
+  is_bot_trade?: boolean;
 };
 
 export type Wallet = {
@@ -58,6 +68,10 @@ async function getJSON<T>(path: string): Promise<T> {
 
 export function fetchForecastVsActual(limit = 90) {
   return getJSON<ForecastVsActual[]>(`/api/forecast-vs-actual?limit=${limit}`);
+}
+
+export function fetchForecasts(limit = 90) {
+  return getJSON<ForecastPull[]>(`/api/forecasts?limit=${limit}`);
 }
 
 export function fetchMarkets() {
@@ -191,6 +205,40 @@ export async function backfillSettlements(limit = 14) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(body.detail || "Backfill failed");
+  }
+  return res.json();
+}
+
+export type BotSettings = {
+  enabled: boolean;
+  bet_amount: number;
+  edge_threshold: number;
+  skip_if_position_exists: boolean;
+  updated_at: string;
+};
+
+export function fetchBotSettings() {
+  return getJSON<BotSettings>("/api/bot/settings");
+}
+
+export async function updateBotSettings(patch: Partial<BotSettings>) {
+  const res = await fetch(`${API_URL}/api/bot/settings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || "Failed to update bot settings");
+  }
+  return res.json() as Promise<BotSettings>;
+}
+
+export async function runBotCycle() {
+  const res = await fetch(`${API_URL}/api/bot/run`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || "Failed to run bot cycle");
   }
   return res.json();
 }
