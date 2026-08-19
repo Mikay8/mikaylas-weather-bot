@@ -1,7 +1,6 @@
 import os
 import time
-from datetime import date, datetime, timezone
-from decimal import Decimal
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +10,7 @@ from sqlalchemy import text
 from weatherbot.api.bot import router as bot_router
 from weatherbot.api.recommendations import build_recommendations
 from weatherbot.api.settings import router as settings_router
-from weatherbot.api.settle import kalshi_fee, resolve_pending_trades
+from weatherbot.api.settle import resolve_pending_trades
 from weatherbot.api.trading import BetError, execute_bet
 from weatherbot.backtest.calibration import run as run_calibration
 from weatherbot.db import get_session
