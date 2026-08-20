@@ -89,6 +89,7 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
     fullDate: d.target_date,
     Forecast: d.predicted_high,
     "Open-Meteo": d.open_meteo_predicted_high,
+    ECMWF: d.ecmwf_predicted_high,
     Actual: d.actual_high,
   }));
 
@@ -253,6 +254,15 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
               />
               <Line
                 type="monotone"
+                dataKey="ECMWF"
+                stroke="var(--accent-ecmwf)"
+                strokeWidth={2}
+                strokeDasharray="2 3"
+                dot={{ r: 2.5 }}
+                connectNulls
+              />
+              <Line
+                type="monotone"
                 dataKey="Actual"
                 stroke="var(--accent-actual)"
                 strokeWidth={2}
@@ -261,7 +271,7 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
               />
             </LineChart>
           </ResponsiveContainer>
-          <div className="mt-2 flex items-center gap-4 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-tertiary)]">
+          <div className="mt-2 flex flex-wrap items-center gap-4 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-tertiary)]">
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-0.5 w-3.5" style={{ background: "var(--accent-forecast)" }} />
               Forecast high (NWS)
@@ -275,6 +285,15 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
                 }}
               />
               Open-Meteo
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-0.5 w-3.5"
+                style={{
+                  background: "repeating-linear-gradient(90deg, var(--accent-ecmwf) 0 2px, transparent 2px 5px)",
+                }}
+              />
+              ECMWF
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-0.5 w-3.5" style={{ background: "var(--accent-actual)" }} />
@@ -387,53 +406,66 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
               </div>
             </div>
 
-            <div
-              className={`grid divide-x divide-[var(--card-border)] ${
-                selectedDay.open_meteo_predicted_high !== null ? "grid-cols-3" : "grid-cols-2"
-              }`}
-            >
-              <div className="flex flex-col items-center gap-2 px-5 py-6">
-                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-tertiary)]">
-                  NWS forecast
-                </span>
-                {selectedDay.predicted_high !== null ? (
-                  <>
-                    <WeatherIcon temp={selectedDay.predicted_high} size={32} />
-                    <span className="font-mono text-3xl font-light text-[var(--foreground)]">
-                      {selectedDay.predicted_high}°
+            {(() => {
+              const secondary = [
+                selectedDay.open_meteo_predicted_high !== null && {
+                  key: "open-meteo",
+                  label: "Open-Meteo forecast",
+                  value: selectedDay.open_meteo_predicted_high,
+                },
+                selectedDay.ecmwf_predicted_high !== null && {
+                  key: "ecmwf",
+                  label: "ECMWF forecast",
+                  value: selectedDay.ecmwf_predicted_high,
+                },
+              ].filter((s): s is { key: string; label: string; value: number } => s !== false);
+              const colCount = 2 + secondary.length;
+              const gridColsClass =
+                colCount === 4 ? "grid-cols-4" : colCount === 3 ? "grid-cols-3" : "grid-cols-2";
+              return (
+                <div className={`grid divide-x divide-[var(--card-border)] ${gridColsClass}`}>
+                  <div className="flex flex-col items-center gap-2 px-5 py-6">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-tertiary)]">
+                      NWS forecast
                     </span>
-                  </>
-                ) : (
-                  <span className="py-3 text-sm text-[var(--foreground-secondary)]">—</span>
-                )}
-              </div>
-              {selectedDay.open_meteo_predicted_high !== null && (
-                <div className="flex flex-col items-center gap-2 px-5 py-6">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-tertiary)]">
-                    Open-Meteo forecast
-                  </span>
-                  <WeatherIcon temp={selectedDay.open_meteo_predicted_high} size={32} />
-                  <span className="font-mono text-3xl font-light text-[var(--foreground)]">
-                    {selectedDay.open_meteo_predicted_high}°
-                  </span>
+                    {selectedDay.predicted_high !== null ? (
+                      <>
+                        <WeatherIcon temp={selectedDay.predicted_high} size={32} />
+                        <span className="font-mono text-3xl font-light text-[var(--foreground)]">
+                          {selectedDay.predicted_high}°
+                        </span>
+                      </>
+                    ) : (
+                      <span className="py-3 text-sm text-[var(--foreground-secondary)]">—</span>
+                    )}
+                  </div>
+                  {secondary.map((s) => (
+                    <div key={s.key} className="flex flex-col items-center gap-2 px-5 py-6">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-tertiary)]">
+                        {s.label}
+                      </span>
+                      <WeatherIcon temp={s.value} size={32} />
+                      <span className="font-mono text-3xl font-light text-[var(--foreground)]">{s.value}°</span>
+                    </div>
+                  ))}
+                  <div className="flex flex-col items-center gap-2 px-5 py-6">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-tertiary)]">
+                      Actual high (NWS CLI)
+                    </span>
+                    {selectedDay.actual_high !== null ? (
+                      <>
+                        <WeatherIcon temp={selectedDay.actual_high} size={32} />
+                        <span className="font-mono text-3xl font-light text-[var(--foreground)]">
+                          {selectedDay.actual_high}°
+                        </span>
+                      </>
+                    ) : (
+                      <span className="py-3 text-sm text-[var(--foreground-secondary)]">—</span>
+                    )}
+                  </div>
                 </div>
-              )}
-              <div className="flex flex-col items-center gap-2 px-5 py-6">
-                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-tertiary)]">
-                  Actual high (NWS CLI)
-                </span>
-                {selectedDay.actual_high !== null ? (
-                  <>
-                    <WeatherIcon temp={selectedDay.actual_high} size={32} />
-                    <span className="font-mono text-3xl font-light text-[var(--foreground)]">
-                      {selectedDay.actual_high}°
-                    </span>
-                  </>
-                ) : (
-                  <span className="py-3 text-sm text-[var(--foreground-secondary)]">—</span>
-                )}
-              </div>
-            </div>
+              );
+            })()}
 
             {selectedDay.predicted_high !== null && selectedDay.actual_high !== null && (
               <div className="border-t border-[var(--card-border)] bg-[var(--table-head-bg)] px-6 py-4">

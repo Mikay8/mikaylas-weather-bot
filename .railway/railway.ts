@@ -64,6 +64,20 @@ export default defineRailway(() => {
     env: sharedEnv,
   });
 
+  const ecmwfCron = service("ecmwf-cron", {
+    ...repo,
+    build: { buildCommand: "pip install -r requirements.txt" },
+    deploy: {
+      startCommand: "python3 -m weatherbot.ingest.ecmwf_forecast",
+      // Same cadence as forecast-cron/open-meteo-cron - see comment above.
+      cronSchedule: "0 6,11,17,22 * * *",
+      restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
+    },
+    env: sharedEnv,
+  });
+
   const marketCron = service("market-cron", {
     ...repo,
     build: { buildCommand: "pip install -r requirements.txt" },
@@ -158,6 +172,7 @@ export default defineRailway(() => {
       postgresVolume,
       forecastCron,
       openMeteoCron,
+      ecmwfCron,
       marketCron,
       settlementCron,
       botCron,

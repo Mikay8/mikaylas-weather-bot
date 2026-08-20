@@ -14,6 +14,7 @@ from decimal import Decimal
 
 from sqlalchemy import text
 
+from weatherbot.api.forecast_agreement import SECONDARY_SOURCES
 from weatherbot.api.settle import kalshi_fee
 from weatherbot.backtest.calibration import load_paired_history
 from weatherbot.backtest.model import bracket_probability, fit_error_stats_seasonal
@@ -23,23 +24,24 @@ MIN_EDGE_THRESHOLD = 0.03  # fee-adjusted edge below this isn't worth surfacing
 
 
 def _latest_predicted_high(session, target_date) -> float | None:
-    # Excludes OPEN_METEO: the model's bias/stdev (fit_error_stats_seasonal,
-    # via load_paired_history) is calibrated on NWS/GFS_MOS forecast error
-    # only. Open-Meteo isn't part of that calibration and disagrees with
-    # NWS by several degrees on occasion (see forecast_agreement.py) - it's
-    # used to gate the bot, not to feed this model. Before this exclusion,
+    # Excludes every SECONDARY_SOURCES entry (Open-Meteo, ECMWF, ...): the
+    # model's bias/stdev (fit_error_stats_seasonal, via load_paired_history)
+    # is calibrated on NWS/GFS_MOS forecast error only. Secondary sources
+    # aren't part of that calibration and disagree with NWS by several
+    # degrees on occasion (see forecast_agreement.py) - they're used to
+    # gate the bot, never to feed this model. Before this exclusion,
     # whichever source's cron happened to run most recently silently became
     # the model's input, mismatched against NWS-fit statistics.
     row = session.execute(
         text(
             """
             SELECT predicted_high FROM forecasts
-            WHERE target_date = :target_date AND model_source != 'OPEN_METEO'
+            WHERE target_date = :target_date AND model_source NOT IN :excluded
             ORDER BY forecast_time DESC
             LIMIT 1
             """
         ),
-        {"target_date": target_date},
+        {"target_date": target_date, "excluded": tuple(SECONDARY_SOURCES)},
     ).fetchone()
     return float(row[0]) if row and row[0] is not None else None
 

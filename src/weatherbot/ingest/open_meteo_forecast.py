@@ -1,15 +1,18 @@
-"""Pull Open-Meteo's next-day forecast high for NYC Central Park and store it
-in `forecasts` under model_source='OPEN_METEO' - a second, independent
-forecast source alongside NWS.
+"""Pull next-day forecast highs from Open-Meteo for NYC Central Park and
+store them in `forecasts` as second/third independent forecast sources
+alongside NWS.
 
-Open-Meteo blends multiple national weather models (GFS, ECMWF, HRRR, etc.)
-into one forecast rather than serving a single source's output, so it
-disagreeing sharply with NWS on the same target_date is a real signal that
-the forecast is unusually uncertain that day, not just model noise. See
-weatherbot/api/forecast_agreement.py for how the two are compared.
+Two variants share this module:
+  - OPEN_METEO: Open-Meteo's auto-blended forecast (GFS + other models,
+    whichever it judges best-resolution for this location)
+  - ECMWF: Open-Meteo's dedicated /v1/ecmwf endpoint, ECMWF IFS HRES only -
+    the single model with the best independent verified accuracy (WMO
+    anomaly correlation scores) of any public global model. Same free,
+    no-key, non-commercial terms as the blended endpoint.
 
-No API key needed - Open-Meteo's forecast API is free for non-commercial
-use. https://open-meteo.com/en/docs
+Both disagreeing sharply with NWS on the same target_date is a real signal
+that the forecast is unusually uncertain that day, not just model noise.
+See weatherbot/api/forecast_agreement.py for how these are compared.
 """
 
 import json
@@ -22,12 +25,16 @@ from weatherbot.db import get_session
 
 STATION = "NYC_CENTRAL_PARK"
 LAT, LON = 40.7789, -73.9692  # Central Park, NYC
-OPEN_METEO_BASE = "https://api.open-meteo.com/v1/forecast"
+
+SOURCES = {
+    "OPEN_METEO": "https://api.open-meteo.com/v1/forecast",
+    "ECMWF": "https://api.open-meteo.com/v1/ecmwf",
+}
 
 
-def fetch_daily_forecast(client: httpx.Client) -> dict:
+def fetch_daily_forecast(client: httpx.Client, base_url: str) -> dict:
     resp = client.get(
-        OPEN_METEO_BASE,
+        base_url,
         params={
             "latitude": LAT,
             "longitude": LON,
@@ -49,7 +56,9 @@ def extract_high_for_date(raw_response: dict, target_date: date) -> float | None
     return None
 
 
-def store_forecast(target_date: date, predicted_high: float, raw_response: dict, forecast_time: datetime):
+def store_forecast(
+    model_source: str, target_date: date, predicted_high: float, raw_response: dict, forecast_time: datetime
+):
     session = get_session()
     try:
         session.execute(
@@ -67,7 +76,7 @@ def store_forecast(target_date: date, predicted_high: float, raw_response: dict,
                 "forecast_time": forecast_time,
                 "target_date": target_date,
                 "predicted_high": predicted_high,
-                "model_source": "OPEN_METEO",
+                "model_source": model_source,
                 "raw_response": json.dumps(raw_response),
             },
         )
@@ -76,21 +85,27 @@ def store_forecast(target_date: date, predicted_high: float, raw_response: dict,
         session.close()
 
 
-def run() -> None:
+def run(model_source: str = "OPEN_METEO") -> None:
+    if model_source not in SOURCES:
+        raise ValueError(f"Unknown model_source: {model_source} (expected one of {list(SOURCES)})")
+
     now = datetime.now(timezone.utc)
     target_date = (now + timedelta(days=1)).date()
 
     with httpx.Client(timeout=30.0) as client:
-        raw_response = fetch_daily_forecast(client)
+        raw_response = fetch_daily_forecast(client, SOURCES[model_source])
 
     predicted_high = extract_high_for_date(raw_response, target_date)
     if predicted_high is None:
-        print(f"[{now.isoformat()}] No Open-Meteo maxTemperature value found for {target_date}.")
+        print(f"[{now.isoformat()}] No {model_source} maxTemperature value found for {target_date}.")
         return
 
-    store_forecast(target_date, predicted_high, raw_response, now)
-    print(f"[{now.isoformat()}] Stored Open-Meteo forecast: target_date={target_date} predicted_high={predicted_high}F")
+    store_forecast(model_source, target_date, predicted_high, raw_response, now)
+    print(
+        f"[{now.isoformat()}] Stored {model_source} forecast: "
+        f"target_date={target_date} predicted_high={predicted_high}F"
+    )
 
 
 if __name__ == "__main__":
-    run()
+    run("OPEN_METEO")

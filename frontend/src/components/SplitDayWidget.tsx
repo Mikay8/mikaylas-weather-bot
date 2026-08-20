@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchHourlyWeather, type HourlyWeather, type Recommendation, type Trade } from "@/lib/api";
+import {
+  effectiveCurrent,
+  fetchHourlyWeather,
+  type HourlyWeather,
+  type Recommendation,
+  type Trade,
+} from "@/lib/api";
 import DayWidget from "@/components/DayWidget";
 
 function useHourlyWeather(): HourlyWeather | null {
@@ -85,7 +91,7 @@ export default function SplitDayWidget({
             label="Today"
             date={today.date}
             forecastHigh={today.forecastHigh}
-            currentTemp={hourly?.current?.temperature ?? null}
+            currentTemp={effectiveCurrent(hourly)?.temperature ?? null}
             topRecommendation={today.topRecommendation}
             openTrades={today.openTrades}
             closeTime={today.closeTime}

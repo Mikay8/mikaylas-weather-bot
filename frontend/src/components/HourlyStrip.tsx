@@ -1,6 +1,6 @@
 "use client";
 
-import type { HourlyPoint, HourlyWeather } from "@/lib/api";
+import { effectiveCurrent, type HourlyPoint, type HourlyWeather } from "@/lib/api";
 
 function SunIcon({ size = 14 }: { size?: number }) {
   return (
@@ -61,25 +61,26 @@ function HourCell({
 }
 
 export function TodayHourlyStrip({ data }: { data: HourlyWeather }) {
-  if (!data.current) return null;
+  const current = effectiveCurrent(data);
+  if (!current) return null;
 
   // The latest "past" observation and "current" can share a timestamp (both
   // are the most recent reading) — drop that duplicate before merging.
-  const past = data.past.filter((p) => p.timestamp !== data.current!.timestamp);
-  const todayKey = nyDateKey(data.current.timestamp);
+  const past = data.past.filter((p) => p.timestamp !== current.timestamp);
+  const todayKey = nyDateKey(current.timestamp);
   const futureToday = data.future.filter((p) => nyDateKey(p.timestamp) === todayKey);
-  const points = [...past, data.current, ...futureToday];
+  const points = [...past, current, ...futureToday];
   const nowIndex = past.length;
 
   return (
     <div className="mt-4 border-t border-white/10 pt-3">
       <div className="mb-2 flex items-baseline gap-2">
         <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-white/50">
-          Now
+          {data.current ? "Now" : "Latest"}
         </span>
         <span className="font-mono text-sm font-medium text-white/90">
-          {Math.round(data.current.temperature)}°F
-          {data.current.condition ? ` · ${data.current.condition}` : ""}
+          {Math.round(current.temperature)}°F
+          {current.condition ? ` · ${current.condition}` : ""}
         </span>
       </div>
       <div className="flex gap-1 overflow-x-auto pb-1">

@@ -4,6 +4,7 @@ export type ForecastVsActual = {
   target_date: string;
   predicted_high: number | null;
   open_meteo_predicted_high: number | null;
+  ecmwf_predicted_high: number | null;
   actual_high: number | null;
 };
 
@@ -276,6 +277,16 @@ export type HourlyWeather = {
   future: HourlyPoint[];
 };
 
+// NWS's live observation occasionally comes back with a null temperature
+// (sensor QC failure, often during heavy rain/fog) even though the station
+// itself is fine and past data is good - fall back to the latest past
+// reading rather than losing "now" entirely. Shared so the Today header
+// and the hourly strip never disagree about what "current" means.
+export function effectiveCurrent(data: HourlyWeather | null | undefined): HourlyPoint | null {
+  if (!data) return null;
+  return data.current ?? data.past[data.past.length - 1] ?? null;
+}
+
 export function fetchHourlyWeather() {
   return getJSON<HourlyWeather>("/api/weather/hourly");
 }
@@ -283,13 +294,14 @@ export function fetchHourlyWeather() {
 export type ForecastAgreement = {
   target_date: string;
   nws_predicted_high: number;
-  open_meteo_predicted_high: number;
+  sources: Record<string, { predicted_high: number; spread: number }>;
   spread: number;
   disagrees: boolean;
 };
 
-// 404s until both NWS and Open-Meteo have reported for tomorrow (e.g. right
-// after a fresh deploy, before both crons have run once) - not an error.
+// 404s until NWS and at least one secondary source have reported for
+// tomorrow (e.g. right after a fresh deploy, before crons have run once) -
+// not an error.
 export async function fetchForecastAgreement(): Promise<ForecastAgreement | null> {
   const res = await fetch(`${API_URL}/api/forecast-agreement`, { cache: "no-store" });
   if (res.status === 404) return null;

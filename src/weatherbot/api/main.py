@@ -108,10 +108,10 @@ def forecast_vs_actual(limit: int = 90):
     """Join next-day forecasts against realized settlements for charting.
 
     Pivoted one row per target_date with predicted_high (NWS, the model's
-    input — see recommendations.py) alongside open_meteo_predicted_high as
-    a second column, rather than one row per model_source: with two
-    forecast sources now populating `forecasts`, the old row-per-source
-    join produced duplicate target_date rows once Open-Meteo started
+    input — see recommendations.py) alongside a column per secondary
+    source, rather than one row per model_source: with multiple forecast
+    sources now populating `forecasts`, the old row-per-source join
+    produced duplicate target_date rows once secondary sources started
     accumulating history."""
     session = get_session()
     try:
@@ -133,12 +133,15 @@ def forecast_vs_actual(limit: int = 90):
                     d.target_date,
                     nws.predicted_high,
                     om.predicted_high AS open_meteo_predicted_high,
+                    ecmwf.predicted_high AS ecmwf_predicted_high,
                     s.actual_high
                 FROM dates d
                 LEFT JOIN latest_per_source nws
                   ON nws.target_date = d.target_date AND nws.model_source = 'NWS'
                 LEFT JOIN latest_per_source om
                   ON om.target_date = d.target_date AND om.model_source = 'OPEN_METEO'
+                LEFT JOIN latest_per_source ecmwf
+                  ON ecmwf.target_date = d.target_date AND ecmwf.model_source = 'ECMWF'
                 LEFT JOIN settlements s
                   ON s.date = d.target_date AND s.station = 'NYC_CENTRAL_PARK'
                 ORDER BY d.target_date DESC
@@ -204,8 +207,9 @@ def get_recommendations():
 
 @app.get("/api/forecast-agreement")
 def get_forecast_agreement_endpoint(target_date: date | None = None):
-    """NWS vs. Open-Meteo predicted high for target_date (defaults to
-    tomorrow, the bot's actual decision date) — see forecast_agreement.py."""
+    """NWS vs. every secondary forecast source's predicted high for
+    target_date (defaults to tomorrow, the bot's actual decision date) —
+    see forecast_agreement.py."""
     if target_date is None:
         target_date = (datetime.now(timezone.utc) + timedelta(days=1)).date()
     result = get_forecast_agreement(target_date)
