@@ -23,11 +23,18 @@ MIN_EDGE_THRESHOLD = 0.03  # fee-adjusted edge below this isn't worth surfacing
 
 
 def _latest_predicted_high(session, target_date) -> float | None:
+    # Excludes OPEN_METEO: the model's bias/stdev (fit_error_stats_seasonal,
+    # via load_paired_history) is calibrated on NWS/GFS_MOS forecast error
+    # only. Open-Meteo isn't part of that calibration and disagrees with
+    # NWS by several degrees on occasion (see forecast_agreement.py) - it's
+    # used to gate the bot, not to feed this model. Before this exclusion,
+    # whichever source's cron happened to run most recently silently became
+    # the model's input, mismatched against NWS-fit statistics.
     row = session.execute(
         text(
             """
             SELECT predicted_high FROM forecasts
-            WHERE target_date = :target_date
+            WHERE target_date = :target_date AND model_source != 'OPEN_METEO'
             ORDER BY forecast_time DESC
             LIMIT 1
             """
