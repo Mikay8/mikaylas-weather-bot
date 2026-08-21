@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { HourlyWeather, Recommendation, Trade } from "@/lib/api";
-import { placeBet } from "@/lib/api";
+import { DEMO_MODE, placeBet } from "@/lib/api";
 import Countdown from "@/components/Countdown";
 import { TodayHourlyStrip, TomorrowHourlyStrip } from "@/components/HourlyStrip";
 import TradeSourceBadge from "@/components/TradeSourceBadge";
@@ -182,20 +182,26 @@ export default function DayWidget({
                 </div>
               </div>
             </div>
-            <div className="flex gap-2.5">
-              <button
-                onClick={() => setConfirming("yes")}
-                className="flex-1 rounded-lg bg-[#5fb88a] py-2.5 font-mono text-[13px] font-bold text-[#0b0e12]"
-              >
-                BUY YES
-              </button>
-              <button
-                onClick={() => setConfirming("no")}
-                className="flex-1 rounded-lg bg-[#e2564f] py-2.5 font-mono text-[13px] font-bold text-white"
-              >
-                BUY NO
-              </button>
-            </div>
+            {DEMO_MODE ? (
+              <p className="text-center font-mono text-[11px] uppercase tracking-[0.08em] text-white/60">
+                View only — trading disabled in demo
+              </p>
+            ) : (
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => setConfirming("yes")}
+                  className="flex-1 rounded-lg bg-[#5fb88a] py-2.5 font-mono text-[13px] font-bold text-[#0b0e12]"
+                >
+                  BUY YES
+                </button>
+                <button
+                  onClick={() => setConfirming("no")}
+                  className="flex-1 rounded-lg bg-[#e2564f] py-2.5 font-mono text-[13px] font-bold text-white"
+                >
+                  BUY NO
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="min-w-[260px] rounded-xl border border-white/20 bg-black/30 p-5 text-sm text-white/70 backdrop-blur">

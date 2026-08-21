@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { logout } from "@/app/actions";
 import Countdown from "@/components/Countdown";
 import DataFreshness from "@/components/DataFreshness";
 import ForecastAgreementBanner from "@/components/ForecastAgreement";
@@ -12,6 +13,7 @@ import SplitDayWidget from "@/components/SplitDayWidget";
 import TradeHistory from "@/components/TradeHistory";
 import WalletPanel from "@/components/WalletPanel";
 import {
+  DEMO_MODE,
   fetchForecastVsActual,
   fetchForecasts,
   fetchMarkets,
@@ -40,7 +42,7 @@ export default function Home() {
 
   const loadAll = useCallback(async () => {
     try {
-      await resolveTrades().catch(() => {});
+      if (!DEMO_MODE) await resolveTrades().catch(() => {});
       const [f, fp, m, w, s, r] = await Promise.all([
         fetchForecastVsActual(),
         fetchForecasts(500).catch(() => []),
@@ -155,7 +157,9 @@ export default function Home() {
           style={{ boxShadow: "0 0 8px var(--accent-forecast)" }}
         />
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-[var(--paper-banner-fg)] sm:text-xs sm:tracking-[0.12em]">
-          SIMULATED / PAPER TRADING — no real orders are ever placed
+          {DEMO_MODE
+            ? "DEMO — VIEW ONLY — trading and settings are disabled"
+            : "SIMULATED / PAPER TRADING — no real orders are ever placed"}
         </span>
       </div>
 
@@ -168,16 +172,30 @@ export default function Home() {
             </p>
             {status && <DataFreshness status={status} />}
           </div>
-          <div className="flex overflow-hidden rounded border border-[var(--card-border)]">
-            <span className="bg-[#1a2028] px-[18px] py-[9px] font-sans text-[13px] font-semibold">
-              Dashboard
-            </span>
-            <Link
-              href="/settings"
-              className="border-l border-[var(--card-border)] px-[18px] py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
-            >
-              Settings
-            </Link>
+          <div className="flex items-center gap-3">
+            <div className="flex overflow-hidden rounded border border-[var(--card-border)]">
+              <span className="bg-[#1a2028] px-[18px] py-[9px] font-sans text-[13px] font-semibold">
+                Dashboard
+              </span>
+              {!DEMO_MODE && (
+                <Link
+                  href="/settings"
+                  className="border-l border-[var(--card-border)] px-[18px] py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
+                >
+                  Settings
+                </Link>
+              )}
+            </div>
+            {!DEMO_MODE && (
+              <form action={logout}>
+                <button
+                  type="submit"
+                  className="rounded border border-[var(--card-border)] px-3 py-1.5 font-sans text-xs font-medium text-[var(--foreground-secondary)] hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
+                >
+                  Log out
+                </button>
+              </form>
+            )}
           </div>
         </header>
 

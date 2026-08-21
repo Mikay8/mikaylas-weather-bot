@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MarketSnapshot, Recommendation } from "@/lib/api";
-import { placeBet } from "@/lib/api";
+import { DEMO_MODE, placeBet } from "@/lib/api";
 
 function bracketLabel(m: MarketSnapshot): string {
   if (m.kalshi_label) return m.kalshi_label;
@@ -88,7 +88,7 @@ export default function MarketsTable({
                 Volume
               </th>
               <th className="px-3 py-2 text-right font-mono text-[11px] font-medium uppercase tracking-[0.08em]">
-                Bet
+                {DEMO_MODE ? "" : "Bet"}
               </th>
             </tr>
           </thead>
@@ -142,20 +142,24 @@ export default function MarketsTable({
                     {m.volume?.toLocaleString() ?? "—"}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <div className="inline-flex gap-1.5">
-                      <button
-                        onClick={() => setBetTarget({ contract: m, side: "yes" })}
-                        className="rounded-sm border border-[var(--yes-border)] bg-[var(--yes-bg)] px-2.5 py-1 font-mono text-xs font-medium text-[var(--yes-fg)] hover:opacity-80"
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => setBetTarget({ contract: m, side: "no" })}
-                        className="rounded-sm border border-[var(--no-border)] bg-[var(--no-bg)] px-2.5 py-1 font-mono text-xs font-medium text-[var(--no-fg)] hover:opacity-80"
-                      >
-                        No
-                      </button>
-                    </div>
+                    {DEMO_MODE ? (
+                      <span className="text-xs text-[var(--foreground-tertiary)]">View only</span>
+                    ) : (
+                      <div className="inline-flex gap-1.5">
+                        <button
+                          onClick={() => setBetTarget({ contract: m, side: "yes" })}
+                          className="rounded-sm border border-[var(--yes-border)] bg-[var(--yes-bg)] px-2.5 py-1 font-mono text-xs font-medium text-[var(--yes-fg)] hover:opacity-80"
+                        >
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => setBetTarget({ contract: m, side: "no" })}
+                          className="rounded-sm border border-[var(--no-border)] bg-[var(--no-bg)] px-2.5 py-1 font-mono text-xs font-medium text-[var(--no-fg)] hover:opacity-80"
+                        >
+                          No
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

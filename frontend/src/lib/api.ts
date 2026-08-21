@@ -1,5 +1,11 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+// Set on the read-only demo deployment (see frontend/README.md) — build-time
+// flag that hides trade/settings UI. The API also enforces this itself
+// (see block_demo_mutations in weatherbot/api/main.py) so this flag is a UX
+// nicety, not the actual security boundary.
+export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 export type ForecastVsActual = {
   target_date: string;
   predicted_high: number | null;

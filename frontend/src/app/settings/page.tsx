@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { logout } from "@/app/actions";
 import BackfillCard from "@/components/settings/BackfillCard";
 import BotControlCard from "@/components/settings/BotControlCard";
 import CronStatusCard from "@/components/settings/CronStatusCard";
@@ -75,16 +76,26 @@ export default function SettingsPage() {
               Data pipeline status, source health, and wallet controls.
             </p>
           </div>
-          <div className="flex overflow-hidden rounded border border-[var(--card-border)]">
-            <Link
-              href="/"
-              className="px-[18px] py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
-            >
-              Dashboard
-            </Link>
-            <span className="border-l border-[var(--card-border)] bg-[#1a2028] px-[18px] py-[9px] font-sans text-[13px] font-semibold">
-              Settings
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex overflow-hidden rounded border border-[var(--card-border)]">
+              <Link
+                href="/"
+                className="px-[18px] py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
+              >
+                Dashboard
+              </Link>
+              <span className="border-l border-[var(--card-border)] bg-[#1a2028] px-[18px] py-[9px] font-sans text-[13px] font-semibold">
+                Settings
+              </span>
+            </div>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="rounded border border-[var(--card-border)] px-3 py-1.5 font-sans text-xs font-medium text-[var(--foreground-secondary)] hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
+              >
+                Log out
+              </button>
+            </form>
           </div>
         </header>
 

@@ -3,8 +3,9 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -23,7 +24,13 @@ EASTERN = ZoneInfo("America/New_York")
 app = FastAPI(title="Mikayla's Weather Bot API")
 
 _web_origins = [o.strip() for o in os.environ.get("WEB_PUBLIC_URL", "").split(",") if o.strip()]
-_allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000", *_web_origins]
+_demo_origin_list = [o.strip() for o in os.environ.get("DEMO_PUBLIC_URL", "").split(",") if o.strip()]
+_allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    *_web_origins,
+    *_demo_origin_list,
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,6 +38,32 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# The demo deployment (view-only, no login) shares this API so it always
+# reflects the same live data as the real dashboard. Its frontend hides all
+# trade/settings controls, but that's just UI — this middleware is the actual
+# enforcement, so a demo visitor can't drive mutations by calling the API
+# directly (e.g. via devtools) even though it's paper money either way.
+_demo_origins = set(_demo_origin_list)
+_MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+# GET-only exemptions under otherwise-blocked prefixes, if any get added later.
+_READ_ONLY_EXEMPT_PATHS: set[str] = set()
+
+
+@app.middleware("http")
+async def block_demo_mutations(request: Request, call_next):
+    if (
+        _demo_origins
+        and request.method in _MUTATING_METHODS
+        and request.url.path not in _READ_ONLY_EXEMPT_PATHS
+        and request.headers.get("origin") in _demo_origins
+    ):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "This is the read-only demo — trading and settings are disabled."},
+        )
+    return await call_next(request)
+
 
 app.include_router(settings_router)
 app.include_router(bot_router)

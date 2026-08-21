@@ -1,4 +1,4 @@
-import { defineRailway, github, postgres, project, service, volume } from "railway/iac";
+import { defineRailway, github, postgres, preserve, project, service, volume } from "railway/iac";
 
 export default defineRailway(() => {
   // Everything was actually running in sfo (US West) despite no explicit
@@ -10,7 +10,11 @@ export default defineRailway(() => {
   const postgresVolume = volume("postgres-volume", {
     alerts: { usage: { "100": {}, "80": {}, "95": {} } },
     allowOnlineResize: true,
-    region: REGION,
+    // Still "us-east4-eqdc4a" live, not the bare "us-east4" region above —
+    // reconciling that requires an explicit volume migration (potential
+    // downtime), so it's deliberately left as its own follow-up rather than
+    // folded into this apply. See the region comment above for the intent.
+    region: "us-east4-eqdc4a",
     sizeMB: 5000,
   });
 
@@ -138,10 +142,15 @@ export default defineRailway(() => {
     networking: { serviceDomains: { api: { port: 8000 } } },
     env: {
       ...sharedEnv,
-      // Restricts CORS to just the deployed frontend + mikayladhill.com
+      // Restricts CORS to just the deployed frontends + mikayladhill.com
       // (see main.py) instead of the local-dev allow_origins=["*"] default.
       // main.py splits this on commas.
       WEB_PUBLIC_URL: "https://${{web.RAILWAY_PUBLIC_DOMAIN}},https://www.mikayladhill.com",
+      // Origin the block_demo_mutations middleware in main.py rejects
+      // trade/settings POSTs from — see web-demo below. Kept separate from
+      // WEB_PUBLIC_URL (which is CORS allow-list, additive) so this stays a
+      // single unambiguous value to compare request Origin against.
+      DEMO_PUBLIC_URL: "https://${{web-demo.RAILWAY_PUBLIC_DOMAIN}}",
     },
   });
 
@@ -163,6 +172,33 @@ export default defineRailway(() => {
       // must resolve before `npm run build` runs. Railway resolves
       // ${{service.OUTPUT}} template refs before the build step.
       NEXT_PUBLIC_API_URL: "https://${{api.RAILWAY_PUBLIC_DOMAIN}}",
+      // Password + session gate (see proxy.ts) — this is the real
+      // dashboard, not the public demo, so it stays behind a login.
+      SITE_PASSWORD: preserve(),
+      SESSION_SECRET: preserve(),
+    },
+  });
+
+  // Read-only public demo of the same dashboard: same backend/data, but the
+  // UI hides every trade/settings control (NEXT_PUBLIC_DEMO_MODE) and the
+  // API backs that up by rejecting mutating requests whose Origin matches
+  // this service's domain (see block_demo_mutations in main.py). No
+  // password — this one's meant to be shared freely.
+  const webDemo = service("web-demo", {
+    source: github("Mikay8/mikaylas-weather-bot", { branch: "main", rootDirectory: "frontend" }),
+    build: { buildCommand: "npm ci && npm run build" },
+    deploy: {
+      startCommand: "npx next start --port 3000",
+      restartPolicyType: "ON_FAILURE",
+      region: REGION,
+      limitOverride: WEB_LIMITS,
+    },
+    networking: { serviceDomains: { web: { port: 3000 } } },
+    env: {
+      NEXT_PUBLIC_API_URL: "https://${{api.RAILWAY_PUBLIC_DOMAIN}}",
+      NEXT_PUBLIC_DEMO_MODE: "true",
+      // No SITE_PASSWORD/SESSION_SECRET — proxy.ts skips the login gate
+      // entirely when NEXT_PUBLIC_DEMO_MODE is set.
     },
   });
 
@@ -178,6 +214,7 @@ export default defineRailway(() => {
       botCron,
       api,
       web,
+      webDemo,
     ],
   });
 });
