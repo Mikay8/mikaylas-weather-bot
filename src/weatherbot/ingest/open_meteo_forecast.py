@@ -17,6 +17,7 @@ See weatherbot/api/forecast_agreement.py for how these are compared.
 
 import json
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import httpx
 from sqlalchemy import text
@@ -25,6 +26,7 @@ from weatherbot.db import get_session
 
 STATION = "NYC_CENTRAL_PARK"
 LAT, LON = 40.7789, -73.9692  # Central Park, NYC
+EASTERN = ZoneInfo("America/New_York")
 
 SOURCES = {
     "OPEN_METEO": "https://api.open-meteo.com/v1/forecast",
@@ -90,7 +92,12 @@ def run(model_source: str = "OPEN_METEO") -> None:
         raise ValueError(f"Unknown model_source: {model_source} (expected one of {list(SOURCES)})")
 
     now = datetime.now(timezone.utc)
-    target_date = (now + timedelta(days=1)).date()
+    # NYC-local, not UTC: UTC is 4-5 hours ahead of Eastern, so a bare UTC
+    # `now` flips to the next date while it's still evening in NYC, which
+    # would then be matched against the wrong day in the API's response
+    # (its `daily.time` values are already NYC-local - see the timezone
+    # param in fetch_daily_forecast).
+    target_date = (now.astimezone(EASTERN) + timedelta(days=1)).date()
 
     with httpx.Client(timeout=30.0) as client:
         raw_response = fetch_daily_forecast(client, SOURCES[model_source])

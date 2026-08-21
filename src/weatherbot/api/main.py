@@ -1,6 +1,7 @@
 import os
 import time
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,8 @@ from weatherbot.api.trading import BetError, execute_bet
 from weatherbot.backtest.calibration import run as run_calibration
 from weatherbot.db import get_session
 from weatherbot.ingest.nws_hourly import get_hourly_view
+
+EASTERN = ZoneInfo("America/New_York")
 
 app = FastAPI(title="Mikayla's Weather Bot API")
 
@@ -211,7 +214,10 @@ def get_forecast_agreement_endpoint(target_date: date | None = None):
     target_date (defaults to tomorrow, the bot's actual decision date) —
     see forecast_agreement.py."""
     if target_date is None:
-        target_date = (datetime.now(timezone.utc) + timedelta(days=1)).date()
+        # NYC-local, not UTC - see the same fix in nws_forecast.py /
+        # open_meteo_forecast.py for why a bare UTC `now` flips to the
+        # next date hours before it's actually tomorrow in NYC.
+        target_date = (datetime.now(EASTERN) + timedelta(days=1)).date()
     result = get_forecast_agreement(target_date)
     if result is None:
         raise HTTPException(

@@ -10,6 +10,7 @@ derives them empirically from historical forecast error by lead time.
 import json
 import os
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import httpx
 from dotenv import load_dotenv
@@ -22,6 +23,7 @@ load_dotenv()
 STATION = "NYC_CENTRAL_PARK"
 LAT, LON = 40.7789, -73.9692  # Central Park, NYC
 NWS_BASE = "https://api.weather.gov"
+EASTERN = ZoneInfo("America/New_York")
 
 
 def _user_agent() -> str:
@@ -53,8 +55,14 @@ def celsius_to_fahrenheit(c: float) -> float:
 
 
 def extract_next_day_high(grid_data: dict, now: datetime) -> tuple[datetime.date, float] | None:
-    """Return (target_date, predicted_high_f) for the next calendar day's max temp."""
-    target_date = (now + timedelta(days=1)).date()
+    """Return (target_date, predicted_high_f) for the next calendar day's max temp.
+
+    "Next day" is relative to NYC-local calendar day, not UTC - UTC is 4-5
+    hours ahead of Eastern, so a bare UTC `now` flips to the next date while
+    it's still evening in NYC (e.g. 8pm EDT is already midnight UTC),
+    silently shifting every forecast a day early for hours at a stretch.
+    """
+    target_date = (now.astimezone(EASTERN) + timedelta(days=1)).date()
     values = grid_data["properties"]["maxTemperature"]["values"]
     for entry in values:
         valid_start = datetime.fromisoformat(entry["validTime"].split("/")[0])
