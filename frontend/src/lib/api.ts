@@ -182,6 +182,24 @@ export function fetchSourceHealth() {
   return getJSON<SourceHealth>("/api/settings/source-health");
 }
 
+export type ApiLogEntry = {
+  id: number;
+  source: "nws" | "iem" | "ecmwf" | "open_meteo" | "kalshi";
+  method: string;
+  url: string;
+  request_body: string | null;
+  status_code: number | null;
+  response_body: string | null;
+  error: string | null;
+  latency_ms: number | null;
+  created_at: string;
+};
+
+export function fetchApiLogs(source?: string) {
+  const query = source ? `?source=${encodeURIComponent(source)}` : "";
+  return getJSON<ApiLogEntry[]>(`/api/settings/api-logs${query}`);
+}
+
 export type CronEntry = {
   name: string;
   schedule: string;

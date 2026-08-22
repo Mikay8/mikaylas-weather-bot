@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from dotenv import load_dotenv
 
+from weatherbot.api_logger import make_logged_hooks
 from weatherbot.db import get_session
 from sqlalchemy import text
 
@@ -34,7 +35,9 @@ def _user_agent() -> str:
 
 
 def _client() -> httpx.Client:
-    return httpx.Client(headers={"User-Agent": _user_agent()}, timeout=30.0)
+    return httpx.Client(
+        headers={"User-Agent": _user_agent()}, timeout=30.0, event_hooks=make_logged_hooks("nws")
+    )
 
 
 def get_gridpoint(client: httpx.Client) -> tuple[str, int, int]:

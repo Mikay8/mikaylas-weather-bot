@@ -25,6 +25,7 @@ import httpx
 from dotenv import load_dotenv
 from sqlalchemy import text
 
+from weatherbot.api_logger import make_logged_hooks
 from weatherbot.db import get_session
 
 load_dotenv()
@@ -38,7 +39,7 @@ EASTERN = ZoneInfo("America/New_York")
 
 
 def _client() -> httpx.Client:
-    return httpx.Client(timeout=30.0)
+    return httpx.Client(timeout=30.0, event_hooks=make_logged_hooks("iem"))
 
 
 def fetch_mos_run(client: httpx.Client, runtime: datetime, retries: int = 3) -> list[dict]:

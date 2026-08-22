@@ -10,6 +10,8 @@ import os
 import httpx
 from dotenv import load_dotenv
 
+from weatherbot.api_logger import make_logged_hooks
+
 load_dotenv()
 
 LAT, LON = 40.7789, -73.9692  # Central Park, NYC
@@ -25,7 +27,9 @@ def _user_agent() -> str:
 
 
 def _client() -> httpx.Client:
-    return httpx.Client(headers={"User-Agent": _user_agent()}, timeout=15.0)
+    return httpx.Client(
+        headers={"User-Agent": _user_agent()}, timeout=15.0, event_hooks=make_logged_hooks("nws")
+    )
 
 
 def celsius_to_fahrenheit(c: float) -> float:

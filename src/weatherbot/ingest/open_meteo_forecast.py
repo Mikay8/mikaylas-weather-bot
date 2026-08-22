@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from sqlalchemy import text
 
+from weatherbot.api_logger import make_logged_hooks
 from weatherbot.db import get_session
 
 STATION = "NYC_CENTRAL_PARK"
@@ -99,7 +100,8 @@ def run(model_source: str = "OPEN_METEO") -> None:
     # param in fetch_daily_forecast).
     target_date = (now.astimezone(EASTERN) + timedelta(days=1)).date()
 
-    with httpx.Client(timeout=30.0) as client:
+    log_source = "ecmwf" if model_source == "ECMWF" else "open_meteo"
+    with httpx.Client(timeout=30.0, event_hooks=make_logged_hooks(log_source)) as client:
         raw_response = fetch_daily_forecast(client, SOURCES[model_source])
 
     predicted_high = extract_high_for_date(raw_response, target_date)

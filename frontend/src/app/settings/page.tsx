@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { logout } from "@/app/actions";
+import ApiLogsCard from "@/components/settings/ApiLogsCard";
 import BackfillCard from "@/components/settings/BackfillCard";
 import BotControlCard from "@/components/settings/BotControlCard";
 import CronStatusCard from "@/components/settings/CronStatusCard";
@@ -119,6 +120,13 @@ export default function SettingsPage() {
             description="Live reachability check against NWS and Kalshi's public APIs."
           >
             <SourceHealthCard health={health} />
+          </SettingsSection>
+
+          <SettingsSection
+            title="API logs"
+            description="Every outbound request to NWS, IEM Mesonet, Open-Meteo/ECMWF, and Kalshi in the last 24 hours, with request/response detail. Click a row to expand."
+          >
+            <ApiLogsCard />
           </SettingsSection>
 
           <SettingsSection

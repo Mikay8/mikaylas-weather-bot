@@ -15,6 +15,7 @@ import httpx
 from dotenv import load_dotenv
 from sqlalchemy import text
 
+from weatherbot.api_logger import make_logged_hooks
 from weatherbot.db import get_session
 
 load_dotenv()
@@ -27,7 +28,7 @@ SOURCE = "IEM_ASOS_NYC"
 
 
 def _client() -> httpx.Client:
-    return httpx.Client(timeout=30.0)
+    return httpx.Client(timeout=30.0, event_hooks=make_logged_hooks("iem"))
 
 
 def fetch_daily_max(client: httpx.Client, target_date: date) -> float | None:

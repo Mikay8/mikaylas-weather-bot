@@ -16,6 +16,7 @@ from weatherbot.backtest.kalshi_market_backfill import SETTLEMENT_SOURCE_CUTOFF
 from weatherbot.backtest.kalshi_market_backfill import run as run_kalshi_backfill
 from weatherbot.db import get_session
 from weatherbot.ingest.nws_settlement import run as run_settlement_backfill
+from weatherbot.api_logger import make_logged_hooks
 
 router = APIRouter(prefix="/api/settings")
 
@@ -64,6 +65,28 @@ def data_coverage():
         session.close()
 
 
+@router.get("/api-logs")
+def api_logs(source: str | None = None, limit: int = 200):
+    session = get_session()
+    try:
+        query = """
+            SELECT id, source, method, url, request_body, status_code,
+                   response_body, error, latency_ms, created_at
+            FROM api_call_logs
+            WHERE created_at >= now() - interval '24 hours'
+        """
+        params: dict = {"limit": limit}
+        if source:
+            query += " AND source = :source"
+            params["source"] = source
+        query += " ORDER BY created_at DESC LIMIT :limit"
+
+        rows = session.execute(text(query), params).mappings().all()
+        return [dict(row) for row in rows]
+    finally:
+        session.close()
+
+
 @router.get("/source-health")
 def source_health():
     results = {}
@@ -71,11 +94,12 @@ def source_health():
     contact = os.environ.get("NWS_USER_AGENT_CONTACT", "test@example.com")
     start = time.monotonic()
     try:
-        resp = httpx.get(
-            "https://api.weather.gov/points/40.7789,-73.9692",
-            headers={"User-Agent": f"(mikaylas-weather-bot, {contact})"},
-            timeout=10.0,
-        )
+        with httpx.Client(event_hooks=make_logged_hooks("nws")) as client:
+            resp = client.get(
+                "https://api.weather.gov/points/40.7789,-73.9692",
+                headers={"User-Agent": f"(mikaylas-weather-bot, {contact})"},
+                timeout=10.0,
+            )
         results["nws"] = {
             "reachable": resp.status_code == 200,
             "status_code": resp.status_code,
@@ -86,11 +110,12 @@ def source_health():
 
     start = time.monotonic()
     try:
-        resp = httpx.get(
-            "https://external-api.kalshi.com/trade-api/v2/markets",
-            params={"series_ticker": "KXHIGHNY", "limit": 1},
-            timeout=10.0,
-        )
+        with httpx.Client(event_hooks=make_logged_hooks("kalshi")) as client:
+            resp = client.get(
+                "https://external-api.kalshi.com/trade-api/v2/markets",
+                params={"series_ticker": "KXHIGHNY", "limit": 1},
+                timeout=10.0,
+            )
         results["kalshi"] = {
             "reachable": resp.status_code == 200,
             "status_code": resp.status_code,

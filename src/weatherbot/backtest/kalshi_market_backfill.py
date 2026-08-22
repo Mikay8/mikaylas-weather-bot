@@ -24,6 +24,7 @@ import httpx
 from dotenv import load_dotenv
 from sqlalchemy import text
 
+from weatherbot.api_logger import make_logged_hooks
 from weatherbot.db import get_session
 from weatherbot.ingest.kalshi_market import parse_target_date
 
@@ -36,7 +37,7 @@ CANDLESTICK_PERIOD_MINUTES = 60
 
 
 def _client() -> httpx.Client:
-    return httpx.Client(timeout=30.0)
+    return httpx.Client(timeout=30.0, event_hooks=make_logged_hooks("kalshi"))
 
 
 def fetch_settled_markets(client: httpx.Client, min_close: date) -> list[dict]:
