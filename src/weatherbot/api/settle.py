@@ -64,18 +64,22 @@ def resolve_pending_trades() -> int:
                 won = not won
 
             payout = contracts * Decimal("1.00") if won else Decimal("0.00")
-            pnl = payout - Decimal(size) - Decimal(fee or 0)
+            fee_dec = Decimal(fee or 0)
+            pnl = payout - Decimal(size) - fee_dec
             status = "settled_win" if won else "settled_loss"
 
             session.execute(
                 text("UPDATE trades SET status = :status, pnl = :pnl WHERE id = :id"),
                 {"status": status, "pnl": pnl, "id": trade_id},
             )
+            # Stake was already deducted from balance when the bet was placed
+            # (execute_bet) but the fee was not - it's charged here, alongside
+            # the payout, so balance ends up matching each trade's stored pnl.
             session.execute(
                 text(
-                    "UPDATE paper_wallet SET balance = balance + :payout, updated_at = now()"
+                    "UPDATE paper_wallet SET balance = balance + :payout - :fee, updated_at = now()"
                 ),
-                {"payout": payout},
+                {"payout": payout, "fee": fee_dec},
             )
             resolved += 1
 

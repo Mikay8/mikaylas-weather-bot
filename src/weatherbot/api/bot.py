@@ -112,6 +112,15 @@ def run_bot_cycle() -> dict:
             if skip_if_position_exists and target_date in existing_dates:
                 skipped.append({"contract_id": rec["contract_id"], "reason": "position exists"})
                 continue
+            if rec.get("forecast_stale"):
+                skipped.append(
+                    {
+                        "contract_id": rec["contract_id"],
+                        "reason": f"forecast is stale (last pulled {rec['forecast_time']}, "
+                        f"before today for a same-day target_date={target_date})",
+                    }
+                )
+                continue
 
             if target_date not in agreement_cache:
                 agreement = get_forecast_agreement(rec["target_date"])

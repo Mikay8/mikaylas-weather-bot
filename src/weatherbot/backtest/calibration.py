@@ -70,6 +70,11 @@ class CalibrationReport:
         return {k: CalibrationReport(v) for k, v in sorted(out.items())}
 
     def summary(self) -> dict:
+        # A source with fewer than min_train_days of history (e.g. a newly
+        # added ENSEMBLE row) legitimately has zero walk-forward results
+        # yet, not an error - report that instead of dividing by zero.
+        if self.n == 0:
+            return {"n": 0, "mae": None, "bias": None, "coverage_68": None, "coverage_90": None}
         return {
             "n": self.n,
             "mae": round(self.mae, 3),

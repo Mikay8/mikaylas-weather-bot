@@ -99,15 +99,17 @@ export default function Home() {
 
   const todayMarkets = markets.filter((m) => m.target_date === nyToday);
   const todayRecommendations = recommendations.filter((r) => r.target_date === nyToday);
-  const todayForecast = forecastData.find((f) => f.target_date === nyToday)?.predicted_high ?? null;
+  const todayForecastRow = forecastData.find((f) => f.target_date === nyToday);
+  const todayForecast = todayForecastRow?.ensemble_predicted_high ?? todayForecastRow?.predicted_high ?? null;
   const topTodayRecommendation = topPick(todayRecommendations);
   const todayOpenTrades = wallet ? wallet.open_trades.filter((t) => t.target_date === nyToday) : [];
   const todayCloseTime = todayMarkets.find((m) => m.close_time)?.close_time ?? null;
 
   const tomorrowMarkets = markets.filter((m) => m.target_date === nyTomorrow);
   const tomorrowRecommendations = recommendations.filter((r) => r.target_date === nyTomorrow);
+  const tomorrowForecastRow = forecastData.find((f) => f.target_date === nyTomorrow);
   const tomorrowForecast =
-    forecastData.find((f) => f.target_date === nyTomorrow)?.predicted_high ?? null;
+    tomorrowForecastRow?.ensemble_predicted_high ?? tomorrowForecastRow?.predicted_high ?? null;
   const topTomorrowRecommendation = topPick(tomorrowRecommendations);
   const tomorrowOpenTrades = wallet
     ? wallet.open_trades.filter((t) => t.target_date === nyTomorrow)

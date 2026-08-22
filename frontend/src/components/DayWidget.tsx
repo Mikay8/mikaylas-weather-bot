@@ -145,7 +145,7 @@ export default function DayWidget({
                 <span className="text-[48px] font-light leading-none tracking-tight text-white">
                   {forecastHigh !== null ? `${forecastHigh}°` : "—"}
                 </span>
-                <span className="text-sm text-white/70">NWS forecast high</span>
+                <span className="text-sm text-white/70">forecast high</span>
               </div>
             </div>
           )}
@@ -160,6 +160,22 @@ export default function DayWidget({
               </span>
               <span className="font-mono text-xs text-white/85">{bracketLabel(topRecommendation)}</span>
             </div>
+            {topRecommendation.forecast_stale && (
+              <div className="mb-2.5 flex items-center gap-1.5 rounded-sm border border-[#d9a441]/40 bg-[#d9a441]/10 px-2 py-1">
+                <span className="font-mono text-[9.5px] font-bold tracking-[0.08em] text-[#e6c273]">
+                  ⚠ STALE FORECAST
+                </span>
+                <span className="font-mono text-[10px] text-white/60">
+                  last pulled {new Date(topRecommendation.forecast_time).toLocaleString(undefined, {
+                    timeZone: "America/New_York",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            )}
             <div className="mb-4 flex gap-5">
               <div>
                 <div className="text-[9.5px] uppercase tracking-[0.08em] text-white/60">Market</div>

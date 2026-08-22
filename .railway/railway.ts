@@ -82,6 +82,24 @@ export default defineRailway(() => {
     env: sharedEnv,
   });
 
+  const ensembleCron = service("ensemble-cron", {
+    ...repo,
+    build: { buildCommand: "pip install -r requirements.txt" },
+    deploy: {
+      startCommand: "python3 -m weatherbot.ingest.ensemble_forecast",
+      // 5 min after forecast-cron/open-meteo-cron/ecmwf-cron, giving them a
+      // buffer to land first - there's no explicit cross-service ordering
+      // in Railway cron, so this averages whichever of the three have
+      // reported by the time it runs (same pattern as bot-cron running
+      // 10 min after market-cron).
+      cronSchedule: "5 6,11,17,22 * * *",
+      restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
+    },
+    env: sharedEnv,
+  });
+
   const marketCron = service("market-cron", {
     ...repo,
     build: { buildCommand: "pip install -r requirements.txt" },
@@ -209,6 +227,7 @@ export default defineRailway(() => {
       forecastCron,
       openMeteoCron,
       ecmwfCron,
+      ensembleCron,
       marketCron,
       settlementCron,
       botCron,

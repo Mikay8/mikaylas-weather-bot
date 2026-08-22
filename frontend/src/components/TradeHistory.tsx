@@ -25,7 +25,20 @@ function bracketLabel(t: Trade): string {
 }
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "America/New_York",
+  });
+}
+
+// target_date is already the NYC trading day as a plain YYYY-MM-DD string,
+// so this needs no timezone conversion (unlike t.timestamp, which is the
+// bet's placement instant in UTC and isn't what "which day" should mean for
+// a settled contract).
+function fmtDayLabel(dateStr: string): string {
+  const [, m, d] = dateStr.split("-").map(Number);
+  return `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1]} ${d}`;
 }
 
 export default function TradeHistory({
@@ -40,11 +53,20 @@ export default function TradeHistory({
     [trades]
   );
 
+  // One point per day a trade settled, net of every trade that resolved
+  // that day - not one point per trade, so multiple same-day settlements
+  // don't render as separate points all sharing one x-axis label.
   const chartData = useMemo(() => {
+    const byDay = new Map<string, number>();
+    for (const t of chronological) {
+      const day = t.target_date ?? t.timestamp.slice(0, 10);
+      byDay.set(day, (byDay.get(day) ?? 0) + (t.pnl ?? 0));
+    }
+    const days = Array.from(byDay.keys()).sort();
     let running = startingBalance;
-    return chronological.map((t) => {
-      running += t.pnl ?? 0;
-      return { date: fmtDate(t.timestamp), balance: running };
+    return days.map((day) => {
+      running += byDay.get(day)!;
+      return { date: fmtDayLabel(day), balance: running };
     });
   }, [chronological, startingBalance]);
 

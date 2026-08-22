@@ -51,6 +51,31 @@ def fetch_daily_forecast(client: httpx.Client, base_url: str) -> dict:
     return resp.json()
 
 
+def fetch_hourly_forecast(client: httpx.Client, base_url: str, hours: int = 36) -> list[dict]:
+    """Same endpoint as fetch_daily_forecast supports an hourly block in the
+    same request - no separate call needed. Returns points shaped like
+    nws_hourly.py's HourlyPoint (timestamp, temperature, condition) so they
+    can be averaged against NWS's hourly forecast point-for-point."""
+    resp = client.get(
+        base_url,
+        params={
+            "latitude": LAT,
+            "longitude": LON,
+            "hourly": "temperature_2m",
+            "temperature_unit": "fahrenheit",
+            "timezone": "America/New_York",
+            "forecast_days": 2,
+        },
+    )
+    resp.raise_for_status()
+    data = resp.json()["hourly"]
+    return [
+        {"timestamp": t, "temperature": round(float(temp), 1), "condition": None}
+        for t, temp in zip(data["time"], data["temperature_2m"])
+        if temp is not None
+    ][:hours]
+
+
 def extract_high_for_date(raw_response: dict, target_date: date) -> float | None:
     target_str = target_date.isoformat()
     for d, high in zip(raw_response["daily"]["time"], raw_response["daily"]["temperature_2m_max"]):

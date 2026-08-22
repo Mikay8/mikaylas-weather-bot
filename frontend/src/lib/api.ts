@@ -11,6 +11,7 @@ export type ForecastVsActual = {
   predicted_high: number | null;
   open_meteo_predicted_high: number | null;
   ecmwf_predicted_high: number | null;
+  ensemble_predicted_high: number | null;
   actual_high: number | null;
 };
 
@@ -98,6 +99,8 @@ export type Recommendation = {
   strike_type: "greater" | "less" | "between";
   kalshi_label: string | null;
   predicted_high: number;
+  forecast_time: string;
+  forecast_stale: boolean;
   model_prob: number;
   market_prob: number;
   side: "yes" | "no";

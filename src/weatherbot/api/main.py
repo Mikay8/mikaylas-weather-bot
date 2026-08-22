@@ -17,7 +17,7 @@ from weatherbot.api.settle import resolve_pending_trades
 from weatherbot.api.trading import BetError, execute_bet
 from weatherbot.backtest.calibration import run as run_calibration
 from weatherbot.db import get_session
-from weatherbot.ingest.nws_hourly import get_hourly_view
+from weatherbot.ingest.ensemble_forecast import get_ensemble_hourly_view
 
 EASTERN = ZoneInfo("America/New_York")
 
@@ -170,6 +170,7 @@ def forecast_vs_actual(limit: int = 90):
                     nws.predicted_high,
                     om.predicted_high AS open_meteo_predicted_high,
                     ecmwf.predicted_high AS ecmwf_predicted_high,
+                    ensemble.predicted_high AS ensemble_predicted_high,
                     s.actual_high
                 FROM dates d
                 LEFT JOIN latest_per_source nws
@@ -178,6 +179,8 @@ def forecast_vs_actual(limit: int = 90):
                   ON om.target_date = d.target_date AND om.model_source = 'OPEN_METEO'
                 LEFT JOIN latest_per_source ecmwf
                   ON ecmwf.target_date = d.target_date AND ecmwf.model_source = 'ECMWF'
+                LEFT JOIN latest_per_source ensemble
+                  ON ensemble.target_date = d.target_date AND ensemble.model_source = 'ENSEMBLE'
                 LEFT JOIN settlements s
                   ON s.date = d.target_date AND s.station = 'NYC_CENTRAL_PARK'
                 ORDER BY d.target_date DESC
@@ -265,14 +268,16 @@ _HOURLY_CACHE_TTL_SECONDS = 300  # NWS station observations update ~hourly anywa
 
 @app.get("/api/weather/hourly")
 def get_hourly_weather():
-    """Current conditions + past/future hourly temps for the Today card,
-    live from NWS (KNYC/Central Park) — not stored, so cached briefly in
-    memory to avoid re-fetching on every dashboard poll."""
+    """Current conditions (NWS observed) + past hourly (NWS observed) +
+    future hourly (NWS/Open-Meteo/ECMWF averaged) for the Today card — not
+    stored, so cached briefly in memory to avoid re-fetching on every
+    dashboard poll. See ensemble_forecast.get_ensemble_hourly_view for why
+    only the forecast half (future) is blended, not the observed half."""
     now = time.monotonic()
     if _hourly_cache["data"] is not None and now - _hourly_cache["fetched_at"] < _HOURLY_CACHE_TTL_SECONDS:
         return _hourly_cache["data"]
     try:
-        data = get_hourly_view()
+        data = get_ensemble_hourly_view()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch hourly weather: {e}")
     _hourly_cache["data"] = data
