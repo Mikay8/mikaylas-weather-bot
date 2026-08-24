@@ -45,7 +45,11 @@ export default defineRailway(() => {
     build: { buildCommand: "pip install -r requirements.txt" },
     deploy: {
       startCommand: "python3 -m weatherbot.ingest.nws_forecast",
-      cronSchedule: "0 6,11,17,22 * * *", // 4x/day, aligned with NWS forecast update cadence
+      // 5x/day: the original 4 aligned with NWS forecast update cadence,
+      // plus 10:00 UTC (6 AM Eastern, fixed year-round - no DST handling)
+      // added so bot-cron trades on a forecast pulled minutes earlier
+      // instead of one up to 4h stale from the 6:00 UTC run.
+      cronSchedule: "0 6,10,11,17,22 * * *",
       restartPolicyType: "NEVER",
       region: REGION,
       limitOverride: CRON_LIMITS,
@@ -60,7 +64,7 @@ export default defineRailway(() => {
       startCommand: "python3 -m weatherbot.ingest.open_meteo_forecast",
       // Same cadence as forecast-cron so a same-cycle NWS/Open-Meteo
       // comparison is never comparing a fresh pull against a stale one.
-      cronSchedule: "0 6,11,17,22 * * *",
+      cronSchedule: "0 6,10,11,17,22 * * *",
       restartPolicyType: "NEVER",
       region: REGION,
       limitOverride: CRON_LIMITS,
@@ -74,7 +78,7 @@ export default defineRailway(() => {
     deploy: {
       startCommand: "python3 -m weatherbot.ingest.ecmwf_forecast",
       // Same cadence as forecast-cron/open-meteo-cron - see comment above.
-      cronSchedule: "0 6,11,17,22 * * *",
+      cronSchedule: "0 6,10,11,17,22 * * *",
       restartPolicyType: "NEVER",
       region: REGION,
       limitOverride: CRON_LIMITS,
@@ -92,7 +96,7 @@ export default defineRailway(() => {
       // in Railway cron, so this averages whichever of the three have
       // reported by the time it runs (same pattern as bot-cron running
       // 10 min after market-cron).
-      cronSchedule: "5 6,11,17,22 * * *",
+      cronSchedule: "5 6,10,11,17,22 * * *",
       restartPolicyType: "NEVER",
       region: REGION,
       limitOverride: CRON_LIMITS,
@@ -135,10 +139,12 @@ export default defineRailway(() => {
     build: { buildCommand: "pip install -r requirements.txt" },
     deploy: {
       startCommand: "python3 -m weatherbot.api.bot",
-      // 10 min after market-cron's hourly pull so it always evaluates
-      // against a fresh snapshot, never data up to an hour stale. No-ops
-      // immediately if the bot is disabled in bot_settings (off by default).
-      cronSchedule: "10 * * * *",
+      // Once/day at 10:10 UTC (6 AM Eastern, fixed year-round - no DST
+      // handling - plus 10 min buffer after the 10:00 UTC forecast/
+      // ensemble/market pulls above) - determined to be the most accurate
+      // time to predict that day's high. No-ops immediately if the bot is
+      // disabled in bot_settings (off by default).
+      cronSchedule: "10 10 * * *",
       restartPolicyType: "NEVER",
       region: REGION,
       limitOverride: CRON_LIMITS,
