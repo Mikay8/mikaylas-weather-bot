@@ -104,7 +104,7 @@ export default function BotControlCard() {
           <div className="text-sm font-medium">Auto-trading bot</div>
           <p className="mt-0.5 text-xs text-[var(--foreground-secondary)]">
             {settings.enabled
-              ? "On — checks open markets every hour and places a paper trade when the edge clears your threshold."
+              ? "On — checks open markets once a day at 6am Eastern and places a paper trade when the edge clears your threshold."
               : "Off — no trades are placed automatically. Everything runs manually."}
           </p>
         </div>
