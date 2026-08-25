@@ -20,6 +20,7 @@ from weatherbot.api.forecast_agreement import DISAGREEMENT_THRESHOLD_F, get_fore
 from weatherbot.api.recommendations import build_recommendations
 from weatherbot.api.trading import BetError, execute_bet
 from weatherbot.db import get_session
+from weatherbot.notify import send_trade_email
 
 router = APIRouter(prefix="/api/bot")
 
@@ -144,6 +145,7 @@ def run_bot_cycle() -> dict:
                 )
                 placed.append(result)
                 existing_dates.add(target_date)  # don't double-place within this cycle
+                send_trade_email(result, rec)
             except BetError as e:
                 skipped.append({"contract_id": rec["contract_id"], "reason": str(e)})
 
