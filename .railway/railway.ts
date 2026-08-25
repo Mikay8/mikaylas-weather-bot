@@ -149,7 +149,15 @@ export default defineRailway(() => {
       region: REGION,
       limitOverride: CRON_LIMITS,
     },
-    env: sharedEnv,
+    env: {
+      ...sharedEnv,
+      // Trade notification emails (see notify.py) — scoped to bot-cron only
+      // since it's the only service that places trades. RESEND_API_KEY is a
+      // secret; NOTIFY_EMAIL_TO isn't but travels with it since both are
+      // only meaningful together.
+      RESEND_API_KEY: preserve(),
+      NOTIFY_EMAIL_TO: preserve(),
+    },
   });
 
   const api = service("api", {

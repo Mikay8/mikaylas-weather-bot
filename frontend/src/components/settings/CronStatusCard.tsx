@@ -69,7 +69,7 @@ export default function CronStatusCard({
       {entries.map(([key, entry]) => (
         <div
           key={key}
-          className="flex items-center justify-between rounded-sm border border-[var(--card-border)] bg-[var(--table-head-bg)] px-3 py-2.5"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-[var(--card-border)] bg-[var(--table-head-bg)] px-3 py-2.5"
         >
           <div>
             <p className="text-sm font-medium">{entry.name}</p>

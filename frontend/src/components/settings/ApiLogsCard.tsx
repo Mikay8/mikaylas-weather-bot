@@ -122,19 +122,21 @@ export default function ApiLogsCard() {
           {logs === null ? "Loading…" : "No API calls logged in the last 24 hours."}
         </p>
       ) : (
-        <div className="rounded-sm border border-[var(--card-border)]">
-          <div className="flex items-center gap-3 border-b border-[var(--card-border)] bg-[var(--table-head-bg)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide text-[var(--foreground-tertiary)]">
-            <span className="w-16 shrink-0">Time</span>
-            <span className="w-20 shrink-0">Source</span>
-            <span className="w-14 shrink-0">Method</span>
-            <span className="min-w-0 flex-1">URL</span>
-            <span className="w-20 shrink-0 text-right">Status</span>
-            <span className="w-16 shrink-0 text-right">Latency</span>
-          </div>
-          <div className="max-h-[480px] overflow-y-auto">
-            {logs.map((entry) => (
-              <LogRow key={entry.id} entry={entry} />
-            ))}
+        <div className="overflow-x-auto rounded-sm border border-[var(--card-border)]">
+          <div className="min-w-[560px]">
+            <div className="flex items-center gap-3 border-b border-[var(--card-border)] bg-[var(--table-head-bg)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide text-[var(--foreground-tertiary)]">
+              <span className="w-16 shrink-0">Time</span>
+              <span className="w-20 shrink-0">Source</span>
+              <span className="w-14 shrink-0">Method</span>
+              <span className="min-w-0 flex-1">URL</span>
+              <span className="w-20 shrink-0 text-right">Status</span>
+              <span className="w-16 shrink-0 text-right">Latency</span>
+            </div>
+            <div className="max-h-[480px] overflow-y-auto">
+              {logs.map((entry) => (
+                <LogRow key={entry.id} entry={entry} />
+              ))}
+            </div>
           </div>
         </div>
       )}

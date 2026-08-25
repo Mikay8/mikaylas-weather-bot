@@ -157,12 +157,16 @@ export type TableCoverage = {
   earliest: string | null;
   latest: string | null;
   row_count: number;
+  size_bytes: number;
+  est_cost_usd_month: number;
 };
 
 export type DataCoverage = {
   forecasts: TableCoverage;
   market_snapshots: TableCoverage;
   settlements: TableCoverage;
+  trades: TableCoverage;
+  api_call_logs: TableCoverage;
 };
 
 export function fetchDataCoverage() {

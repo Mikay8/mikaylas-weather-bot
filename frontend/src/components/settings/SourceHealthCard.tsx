@@ -5,10 +5,10 @@ import type { SourceHealth } from "@/lib/api";
 function Row({ label, entry }: { label: string; entry: SourceHealth["nws"] | undefined }) {
   if (!entry) return null;
   return (
-    <div className="flex items-center justify-between rounded-sm border border-[var(--card-border)] bg-[var(--table-head-bg)] px-3 py-2.5">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-sm border border-[var(--card-border)] bg-[var(--table-head-bg)] px-3 py-2.5">
       <div className="flex items-center gap-2">
         <span
-          className={`inline-block h-2 w-2 rounded-full ${
+          className={`inline-block h-2 w-2 shrink-0 rounded-full ${
             entry.reachable ? "bg-[var(--positive)]" : "bg-[var(--negative)]"
           }`}
           style={{
@@ -19,7 +19,7 @@ function Row({ label, entry }: { label: string; entry: SourceHealth["nws"] | und
         />
         <span className="text-sm font-medium">{label}</span>
       </div>
-      <span className="font-mono text-xs text-[var(--foreground-secondary)]">
+      <span className="break-all font-mono text-xs text-[var(--foreground-secondary)]">
         {entry.reachable
           ? `${entry.latency_ms}ms (HTTP ${entry.status_code})`
           : entry.error ?? "unreachable"}

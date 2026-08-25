@@ -28,8 +28,8 @@ CRON_SERVICES = {
     "forecast": {
         "id": "9a0e699e-04c6-4c77-9a17-2205454e9382",
         "name": "forecast-cron",
-        "schedule": "0 6,11,17,22 * * *",
-        "schedule_label": "4x/day (6am, 11am, 5pm, 10pm UTC)",
+        "schedule": "0 6,10,11,17,22 * * *",
+        "schedule_label": "5x/day (6am, 10am, 11am, 5pm, 10pm UTC)",
     },
     "market": {
         "id": "2316dcb4-af92-4add-903f-9af233428e26",
@@ -46,20 +46,40 @@ CRON_SERVICES = {
 }
 
 
+# Railway's published volume rate: $0.00000006/GB/second (railway.com/pricing,
+# checked 2026-08-24) * 86400 * ~30.44 avg days/month. Postgres's disk is a
+# regular Railway volume (see postgresVolume in .railway/railway.ts), so this
+# applies directly. An estimate, not a real per-table bill - Railway doesn't
+# meter storage per-table, only the whole volume.
+RAILWAY_GB_MONTH_USD = 0.00000006 * 86400 * 30.44
+
+
 @router.get("/data-coverage")
 def data_coverage():
     session = get_session()
     try:
         def minmax(table: str, col: str) -> dict:
             row = session.execute(
-                text(f"SELECT MIN({col}), MAX({col}), COUNT(*) FROM {table}")
+                text(
+                    f"SELECT MIN({col}), MAX({col}), COUNT(*), "
+                    f"pg_total_relation_size('{table}') FROM {table}"
+                )
             ).fetchone()
-            return {"earliest": row[0], "latest": row[1], "row_count": row[2]}
+            size_bytes = row[3]
+            return {
+                "earliest": row[0],
+                "latest": row[1],
+                "row_count": row[2],
+                "size_bytes": size_bytes,
+                "est_cost_usd_month": round(size_bytes / (1024**3) * RAILWAY_GB_MONTH_USD, 4),
+            }
 
         return {
             "forecasts": minmax("forecasts", "target_date"),
             "market_snapshots": minmax("market_snapshots", "timestamp"),
             "settlements": minmax("settlements", "date"),
+            "trades": minmax("trades", "timestamp"),
+            "api_call_logs": minmax("api_call_logs", "created_at"),
         }
     finally:
         session.close()
