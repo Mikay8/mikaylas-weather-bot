@@ -127,24 +127,27 @@ def store_ensemble_forecast(target_date: date, highs: dict[str, float], forecast
 
 
 def run() -> None:
+    """Computes the ensemble for both today and tomorrow - today's is needed
+    for a same-day 6am trade (see bot-cron); tomorrow's is the original
+    evening-before-trade case."""
     now = datetime.now(timezone.utc)
-    target_date = (now.astimezone(EASTERN) + timedelta(days=1)).date()
+    today = now.astimezone(EASTERN).date()
+    tomorrow = today + timedelta(days=1)
 
     session = get_session()
     try:
-        highs = _latest_daily_highs(session, target_date)
+        for target_date in (today, tomorrow):
+            highs = _latest_daily_highs(session, target_date)
+            if not highs:
+                print(f"[{now.isoformat()}] No source forecasts yet for {target_date}, skipping ensemble.")
+                continue
+            mean_high = store_ensemble_forecast(target_date, highs, now)
+            print(
+                f"[{now.isoformat()}] Stored ENSEMBLE forecast: target_date={target_date} "
+                f"predicted_high={mean_high}F (from {sorted(highs)})"
+            )
     finally:
         session.close()
-
-    if not highs:
-        print(f"[{now.isoformat()}] No source forecasts yet for {target_date}, skipping ensemble.")
-        return
-
-    mean_high = store_ensemble_forecast(target_date, highs, now)
-    print(
-        f"[{now.isoformat()}] Stored ENSEMBLE forecast: target_date={target_date} "
-        f"predicted_high={mean_high}F (from {sorted(highs)})"
-    )
 
 
 if __name__ == "__main__":

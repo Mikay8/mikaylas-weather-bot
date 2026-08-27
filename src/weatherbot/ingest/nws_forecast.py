@@ -1,5 +1,5 @@
-"""Pull NWS gridpoint forecast data for NYC Central Park and store next-day
-predicted high in `forecasts`.
+"""Pull NWS gridpoint forecast data for NYC Central Park and store today's
+and tomorrow's predicted high in `forecasts`.
 
 api.weather.gov's raw forecast (forecastGridData) gives a deterministic
 maxTemperature series per day, no confidence interval. We store what's
@@ -57,15 +57,10 @@ def celsius_to_fahrenheit(c: float) -> float:
     return c * 9 / 5 + 32
 
 
-def extract_next_day_high(grid_data: dict, now: datetime) -> tuple[datetime.date, float] | None:
-    """Return (target_date, predicted_high_f) for the next calendar day's max temp.
-
-    "Next day" is relative to NYC-local calendar day, not UTC - UTC is 4-5
-    hours ahead of Eastern, so a bare UTC `now` flips to the next date while
-    it's still evening in NYC (e.g. 8pm EDT is already midnight UTC),
-    silently shifting every forecast a day early for hours at a stretch.
-    """
-    target_date = (now.astimezone(EASTERN) + timedelta(days=1)).date()
+def extract_high_for_date(grid_data: dict, target_date) -> float | None:
+    """Return the predicted max temp (F) for `target_date` from a gridpoint
+    forecast response, or None if that date isn't in the response's
+    maxTemperature series (e.g. today's high after it's already passed)."""
     values = grid_data["properties"]["maxTemperature"]["values"]
     for entry in values:
         valid_start = datetime.fromisoformat(entry["validTime"].split("/")[0])
@@ -76,7 +71,7 @@ def extract_next_day_high(grid_data: dict, now: datetime) -> tuple[datetime.date
                 return None
             if "degC" in uom:
                 value = celsius_to_fahrenheit(value)
-            return target_date, round(value, 1)
+            return round(value, 1)
     return None
 
 
@@ -108,19 +103,25 @@ def store_forecast(target_date, predicted_high: float, raw_response: dict, forec
 
 
 def run() -> None:
+    """Stores both today's and tomorrow's predicted high from a single grid
+    pull. Today's is needed for a same-day 6am trade (see bot-cron); tomorrow's
+    is the original evening-before-trade case and stays the model's primary
+    input until same-day forecast history is deep enough to trust equally
+    (see the ENSEMBLE comment in recommendations.py)."""
     now = datetime.now(timezone.utc)
     with _client() as client:
         grid_id, grid_x, grid_y = get_gridpoint(client)
         grid_data = fetch_grid_forecast(client, grid_id, grid_x, grid_y)
 
-    result = extract_next_day_high(grid_data, now)
-    if result is None:
-        print(f"[{now.isoformat()}] No next-day maxTemperature value found in grid data.")
-        return
-
-    target_date, predicted_high = result
-    store_forecast(target_date, predicted_high, grid_data, now)
-    print(f"[{now.isoformat()}] Stored forecast: target_date={target_date} predicted_high={predicted_high}F")
+    today = now.astimezone(EASTERN).date()
+    tomorrow = today + timedelta(days=1)
+    for target_date in (today, tomorrow):
+        predicted_high = extract_high_for_date(grid_data, target_date)
+        if predicted_high is None:
+            print(f"[{now.isoformat()}] No maxTemperature value found for {target_date}.")
+            continue
+        store_forecast(target_date, predicted_high, grid_data, now)
+        print(f"[{now.isoformat()}] Stored forecast: target_date={target_date} predicted_high={predicted_high}F")
 
 
 if __name__ == "__main__":

@@ -114,6 +114,10 @@ def store_forecast(
 
 
 def run(model_source: str = "OPEN_METEO") -> None:
+    """Stores both today's and tomorrow's predicted high from a single daily
+    pull (forecast_days=3 already covers both). Today's is needed for a
+    same-day 6am trade (see bot-cron); tomorrow's is the original
+    evening-before-trade case."""
     if model_source not in SOURCES:
         raise ValueError(f"Unknown model_source: {model_source} (expected one of {list(SOURCES)})")
 
@@ -123,22 +127,23 @@ def run(model_source: str = "OPEN_METEO") -> None:
     # would then be matched against the wrong day in the API's response
     # (its `daily.time` values are already NYC-local - see the timezone
     # param in fetch_daily_forecast).
-    target_date = (now.astimezone(EASTERN) + timedelta(days=1)).date()
+    today = now.astimezone(EASTERN).date()
+    tomorrow = today + timedelta(days=1)
 
     log_source = "ecmwf" if model_source == "ECMWF" else "open_meteo"
     with httpx.Client(timeout=30.0, event_hooks=make_logged_hooks(log_source)) as client:
         raw_response = fetch_daily_forecast(client, SOURCES[model_source])
 
-    predicted_high = extract_high_for_date(raw_response, target_date)
-    if predicted_high is None:
-        print(f"[{now.isoformat()}] No {model_source} maxTemperature value found for {target_date}.")
-        return
-
-    store_forecast(model_source, target_date, predicted_high, raw_response, now)
-    print(
-        f"[{now.isoformat()}] Stored {model_source} forecast: "
-        f"target_date={target_date} predicted_high={predicted_high}F"
-    )
+    for target_date in (today, tomorrow):
+        predicted_high = extract_high_for_date(raw_response, target_date)
+        if predicted_high is None:
+            print(f"[{now.isoformat()}] No {model_source} maxTemperature value found for {target_date}.")
+            continue
+        store_forecast(model_source, target_date, predicted_high, raw_response, now)
+        print(
+            f"[{now.isoformat()}] Stored {model_source} forecast: "
+            f"target_date={target_date} predicted_high={predicted_high}F"
+        )
 
 
 if __name__ == "__main__":
