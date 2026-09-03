@@ -178,6 +178,12 @@ export default function Home() {
               <span className="bg-[#1a2028] px-[18px] py-[9px] font-sans text-[13px] font-semibold">
                 Dashboard
               </span>
+              <Link
+                href="/analytics"
+                className="border-l border-[var(--card-border)] px-[18px] py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
+              >
+                Analytics
+              </Link>
               {!DEMO_MODE && (
                 <Link
                   href="/settings"
