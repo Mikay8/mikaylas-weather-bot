@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ForecastPull } from "@/lib/api";
 
 const MIN_SAMPLE_DAYS = 20; // rough floor for a believable per-lead-time calibration
@@ -36,61 +36,97 @@ export default function ForecastDrift({
     [pulls, targetDate]
   );
 
+  const [expanded, setExpanded] = useState(false);
   const calibrationReady = daysWithMultiplePulls >= MIN_SAMPLE_DAYS;
 
   if (dayPulls.length === 0) {
     return null;
   }
 
+  const first = dayPulls[0];
+  const last = dayPulls[dayPulls.length - 1];
+  const netDrift =
+    dayPulls.length > 1 && first.predicted_high !== null && last.predicted_high !== null
+      ? last.predicted_high - first.predicted_high
+      : null;
+
   return (
     <div className="mt-5 border-t border-[var(--card-border)] pt-4">
-      <div className="mb-2.5 flex items-center justify-between">
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        disabled={dayPulls.length <= 1}
+        className="flex w-full items-center justify-between gap-3 text-left disabled:cursor-default"
+      >
         <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--foreground-tertiary)]">
           Forecast history for {targetDate}
         </span>
-        {dayPulls.length > 1 && (
-          <span className="font-mono text-[10px] text-[var(--foreground-tertiary)]">
-            {dayPulls.length} pulls
-          </span>
-        )}
-      </div>
+        <span className="flex items-center gap-2 font-mono text-[10px] text-[var(--foreground-tertiary)]">
+          {dayPulls.length > 1 ? (
+            <>
+              {dayPulls.length} pulls
+              {netDrift !== null && netDrift !== 0 && (
+                <span className={netDrift > 0 ? "text-[var(--negative)]" : "text-[var(--accent-forecast)]"}>
+                  (net {netDrift > 0 ? "+" : ""}
+                  {netDrift}°)
+                </span>
+              )}
+              <span aria-hidden>{expanded ? "▲" : "▼"}</span>
+            </>
+          ) : (
+            "1 pull"
+          )}
+        </span>
+      </button>
 
-      <div className="space-y-1.5">
-        {dayPulls.map((p, i) => {
-          const prev = i > 0 ? dayPulls[i - 1] : null;
-          const delta =
-            prev && prev.predicted_high !== null && p.predicted_high !== null
-              ? p.predicted_high - prev.predicted_high
-              : null;
-          const hoursToClose = closeTime ? hoursUntil(p.forecast_time, closeTime) : null;
-          return (
-            <div
-              key={p.id}
-              className="flex items-center justify-between rounded-sm border border-[var(--row-border)] bg-[var(--table-head-bg)] px-3 py-1.5 text-xs"
-            >
-              <span className="font-mono text-[var(--foreground-secondary)]">
-                {fmtTime(p.forecast_time)}
-                {hoursToClose !== null && (
-                  <span className="ml-2 text-[var(--foreground-tertiary)]">
-                    ({hoursToClose > 0 ? `${hoursToClose.toFixed(0)}h before close` : "after close"})
-                  </span>
-                )}
-              </span>
-              <span className="flex items-center gap-2 font-mono font-medium">
-                {p.predicted_high}°F
-                {delta !== null && delta !== 0 && (
-                  <span
-                    className={delta > 0 ? "text-[var(--negative)]" : "text-[var(--accent-forecast)]"}
-                  >
-                    ({delta > 0 ? "+" : ""}
-                    {delta}°)
-                  </span>
-                )}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {!expanded && dayPulls.length > 1 && (
+        <div className="mt-2.5 flex items-center justify-between rounded-sm border border-[var(--row-border)] bg-[var(--table-head-bg)] px-3 py-1.5 text-xs">
+          <span className="font-mono text-[var(--foreground-secondary)]">
+            {fmtTime(first.forecast_time)} → {fmtTime(last.forecast_time)}
+          </span>
+          <span className="font-mono font-medium">
+            {first.predicted_high}°F → {last.predicted_high}°F
+          </span>
+        </div>
+      )}
+
+      {(expanded || dayPulls.length <= 1) && (
+        <div className="mt-2.5 space-y-1.5">
+          {dayPulls.map((p, i) => {
+            const prev = i > 0 ? dayPulls[i - 1] : null;
+            const delta =
+              prev && prev.predicted_high !== null && p.predicted_high !== null
+                ? p.predicted_high - prev.predicted_high
+                : null;
+            const hoursToClose = closeTime ? hoursUntil(p.forecast_time, closeTime) : null;
+            return (
+              <div
+                key={p.id}
+                className="flex items-center justify-between rounded-sm border border-[var(--row-border)] bg-[var(--table-head-bg)] px-3 py-1.5 text-xs"
+              >
+                <span className="font-mono text-[var(--foreground-secondary)]">
+                  {fmtTime(p.forecast_time)}
+                  {hoursToClose !== null && (
+                    <span className="ml-2 text-[var(--foreground-tertiary)]">
+                      ({hoursToClose > 0 ? `${hoursToClose.toFixed(0)}h before close` : "after close"})
+                    </span>
+                  )}
+                </span>
+                <span className="flex items-center gap-2 font-mono font-medium">
+                  {p.predicted_high}°F
+                  {delta !== null && delta !== 0 && (
+                    <span
+                      className={delta > 0 ? "text-[var(--negative)]" : "text-[var(--accent-forecast)]"}
+                    >
+                      ({delta > 0 ? "+" : ""}
+                      {delta}°)
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <p className="mt-3 text-[11px] leading-relaxed text-[var(--foreground-tertiary)]">
         {calibrationReady ? (
