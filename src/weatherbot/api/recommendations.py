@@ -40,37 +40,23 @@ def is_forecast_stale(forecast_time: datetime, target_date) -> bool:
 
 
 def _latest_predicted_high(session, target_date) -> tuple[float, datetime] | None:
-    # Prefer the ENSEMBLE row (mean of NWS/Open-Meteo/ECMWF, written by
-    # ensemble_forecast.py) as the model's point-forecast input - a
-    # lower-variance estimate than any single source. The model's
-    # bias/stdev correction (fit_error_stats_seasonal, via
-    # load_paired_history) is still fit on GFS_MOS history only: Open-Meteo
-    # and ECMWF don't yet have enough paired forecast/actual history to
-    # refit against an ensemble-specific error distribution (as of this
-    # writing, a few days vs. GFS_MOS's full year). Applying GFS_MOS stats
-    # to the ensemble mean is the same "apply GFS_MOS stats to whichever
-    # forecast is freshest" approach this model used pre-ensemble, just
-    # with a better point estimate - not a fully-refit ensemble model.
-    # Revisit once /api/calibration?model_source=ENSEMBLE has ~30+ days.
-    row = session.execute(
-        text(
-            """
-            SELECT predicted_high, forecast_time FROM forecasts
-            WHERE target_date = :target_date AND model_source = 'ENSEMBLE'
-            ORDER BY forecast_time DESC
-            LIMIT 1
-            """
-        ),
-        {"target_date": target_date},
-    ).fetchone()
-    if row and row[0] is not None:
-        return float(row[0]), row[1]
-
-    # Fallback for a target_date ensemble-cron hasn't reached yet (e.g. a
-    # brand-new day before any of the source crons have landed): same
-    # NWS-only logic as before the ensemble existed. Excludes every
-    # SECONDARY_SOURCES entry plus ENSEMBLE itself so a stray future
-    # ENSEMBLE row can never be picked up here as an "other source."
+    # Use GFS_MOS directly as the model's point-forecast input. This used to
+    # prefer ENSEMBLE (mean of NWS/Open-Meteo/ECMWF) on the theory that
+    # averaging sources gives a lower-variance estimate, but a backtest
+    # (2026-09-02) measured ENSEMBLE running a -1.63F bias against real
+    # settlements - NWS/Open-Meteo/ECMWF are each individually worse than
+    # GFS_MOS too (MAE 2.3-2.6F vs GFS_MOS's 2.1F). The model's bias/stdev
+    # correction (fit_error_stats_seasonal, via load_paired_history) is fit
+    # on GFS_MOS history, so feeding it a differently-biased point estimate
+    # from another source was applying the wrong correction on top of an
+    # already-worse forecast. GFS_MOS also has a full year of calibration
+    # history vs. ENSEMBLE's ~2 weeks. The other sources' crons still run
+    # (forecast_agreement.py's disagreement gate in bot.py needs them, and
+    # it keeps the door open to properly refit a multi-source model later
+    # once there's enough paired history to do it right) - they're just not
+    # the trading input anymore. Excludes SECONDARY_SOURCES and ENSEMBLE so
+    # a same-day gap in the GFS_MOS cron can't silently fall back to a
+    # worse-calibrated source.
     row = session.execute(
         text(
             """
@@ -86,10 +72,9 @@ def _latest_predicted_high(session, target_date) -> tuple[float, datetime] | Non
 
 
 def build_recommendations() -> list[dict]:
-    # Deliberately still GFS_MOS (the default) rather than ENSEMBLE - see
-    # the comment in _latest_predicted_high. The point-forecast input is
-    # the ensemble mean, but the error correction applied to it is still
-    # fit on single-source history until ensemble history is deep enough.
+    # GFS_MOS (the default model_source) both for the point forecast
+    # (_latest_predicted_high) and for the error correction fit here - see
+    # the comment in _latest_predicted_high for why.
     dated_errors = [(d, a - p) for d, p, a in load_paired_history()]
     if len(dated_errors) < 2:
         return []
