@@ -85,6 +85,12 @@ export default function SettingsPage() {
               >
                 Dashboard
               </Link>
+              <Link
+                href="/analytics"
+                className="border-l border-[var(--card-border)] px-3 py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)] sm:px-[18px]"
+              >
+                Analytics
+              </Link>
               <span className="border-l border-[var(--card-border)] bg-[#1a2028] px-3 py-[9px] font-sans text-[13px] font-semibold sm:px-[18px]">
                 Settings
               </span>

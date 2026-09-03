@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 
+from weatherbot.api.analytics import router as analytics_router
 from weatherbot.api.bot import router as bot_router
 from weatherbot.api.forecast_agreement import get_forecast_agreement
 from weatherbot.api.recommendations import build_recommendations
@@ -67,6 +68,7 @@ async def block_demo_mutations(request: Request, call_next):
 
 app.include_router(settings_router)
 app.include_router(bot_router)
+app.include_router(analytics_router)
 
 
 def _rows_to_dicts(result) -> list[dict]:

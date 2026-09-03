@@ -337,3 +337,47 @@ export async function fetchForecastAgreement(): Promise<ForecastAgreement | null
   if (!res.ok) throw new Error(`Failed to fetch forecast agreement: ${res.status}`);
   return res.json();
 }
+
+export type TradeDiagnosis = {
+  id: number;
+  trade_id: number;
+  category: "bad_luck" | "systematic_bias" | "data_bug" | "other";
+  confidence: "low" | "medium" | "high";
+  summary: string;
+  model: string;
+  created_at: string;
+  target_date: string;
+  side: "yes" | "no";
+  price: number;
+  size: number;
+  pnl: number | null;
+  is_bot_trade: boolean;
+};
+
+export function fetchDiagnoses(limit = 100) {
+  return getJSON<TradeDiagnosis[]>(`/api/analytics/diagnoses?limit=${limit}`);
+}
+
+export type CalibrationProposal = {
+  id: number;
+  outcome: "pr_opened" | "threshold_not_met" | "no_pattern" | "backtest_rejected";
+  reasoning: string | null;
+  old_factor: number | null;
+  new_factor: number | null;
+  pr_url: string | null;
+  diagnosis_ids: number[];
+  created_at: string;
+};
+
+export function fetchCalibrationProposals(limit = 50) {
+  return getJSON<CalibrationProposal[]>(`/api/analytics/calibration-proposals?limit=${limit}`);
+}
+
+export type AnalyticsSummary = {
+  by_category_30d: Record<string, number>;
+  total_prs_opened: number;
+};
+
+export function fetchAnalyticsSummary() {
+  return getJSON<AnalyticsSummary>("/api/analytics/summary");
+}

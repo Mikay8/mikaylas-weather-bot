@@ -151,6 +151,37 @@ export default defineRailway(() => {
     },
   });
 
+  const analystCron = service("analyst-cron", {
+    ...repo,
+    build: { buildCommand: "pip install -r requirements.txt" },
+    deploy: {
+      // Runs after settlement-cron (06:40 UTC) resolves the prior day's
+      // paper trades against real settlements, so there's something new to
+      // diagnose. trade_analyst.py logs a per-trade diagnosis note;
+      // calibration_proposer.py only opens a PR (against develop, never
+      // auto-merged) once a repeated systematic_bias pattern clears
+      // MIN_SYSTEMATIC_BIAS_HITS AND the proposed fix backtests better -
+      // most nights this is a no-op. See weatherbot/analysis/.
+      startCommand:
+        "python3 -m weatherbot.analysis.trade_analyst && " +
+        "python3 -m weatherbot.analysis.calibration_proposer",
+      cronSchedule: "0 7 * * *",
+      restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
+    },
+    env: {
+      ...sharedEnv,
+      // Scoped to analyst-cron only - the one service that calls Claude or
+      // pushes branches/opens PRs. Same preserve() pattern as bot-cron's
+      // RESEND_API_KEY. GITHUB_API_KEY should be a fine-grained PAT scoped
+      // to just this repo (Contents + Pull requests: read/write) - not a
+      // classic token with full account-wide repo scope.
+      ANTHROPIC_API_KEY: preserve(),
+      GITHUB_API_KEY: preserve(),
+    },
+  });
+
   const api = service("api", {
     ...repo,
     build: { buildCommand: "pip install -r requirements.txt" },
@@ -234,6 +265,7 @@ export default defineRailway(() => {
       marketCron,
       settlementCron,
       botCron,
+      analystCron,
       api,
       web,
       webDemo,
