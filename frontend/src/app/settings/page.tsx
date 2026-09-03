@@ -124,7 +124,7 @@ export default function SettingsPage() {
 
           <SettingsSection
             title="API logs"
-            description="Every outbound request to NWS, IEM Mesonet, Open-Meteo/ECMWF, and Kalshi in the last 24 hours, with request/response detail. Click a row to expand."
+            description="Every outbound request to NWS, IEM Mesonet, Open-Meteo, and Kalshi in the last 24 hours, with request/response detail. Click a row to expand."
           >
             <ApiLogsCard />
           </SettingsSection>
