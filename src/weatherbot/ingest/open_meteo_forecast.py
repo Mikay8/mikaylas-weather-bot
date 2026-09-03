@@ -1,18 +1,15 @@
 """Pull next-day forecast highs from Open-Meteo for NYC Central Park and
-store them in `forecasts` as second/third independent forecast sources
-alongside NWS.
+store them in `forecasts` as a second independent forecast source alongside
+NWS.
 
-Two variants share this module:
-  - OPEN_METEO: Open-Meteo's auto-blended forecast (GFS + other models,
-    whichever it judges best-resolution for this location)
-  - ECMWF: Open-Meteo's dedicated /v1/ecmwf endpoint, ECMWF IFS HRES only -
-    the single model with the best independent verified accuracy (WMO
-    anomaly correlation scores) of any public global model. Same free,
-    no-key, non-commercial terms as the blended endpoint.
+Used to also support an ECMWF variant (Open-Meteo's dedicated /v1/ecmwf
+endpoint, ECMWF IFS HRES only) - dropped 2026-09 to cut down on cron/source
+count, so this module is Open-Meteo-only now, though it's kept generic on
+model_source in case another Open-Meteo-hosted model is worth adding later.
 
-Both disagreeing sharply with NWS on the same target_date is a real signal
-that the forecast is unusually uncertain that day, not just model noise.
-See weatherbot/api/forecast_agreement.py for how these are compared.
+Disagreeing sharply with NWS on the same target_date is a real signal that
+the forecast is unusually uncertain that day, not just model noise. See
+weatherbot/api/forecast_agreement.py for how these are compared.
 """
 
 import json
@@ -31,7 +28,6 @@ EASTERN = ZoneInfo("America/New_York")
 
 SOURCES = {
     "OPEN_METEO": "https://api.open-meteo.com/v1/forecast",
-    "ECMWF": "https://api.open-meteo.com/v1/ecmwf",
 }
 
 
@@ -130,8 +126,7 @@ def run(model_source: str = "OPEN_METEO") -> None:
     today = now.astimezone(EASTERN).date()
     tomorrow = today + timedelta(days=1)
 
-    log_source = "ecmwf" if model_source == "ECMWF" else "open_meteo"
-    with httpx.Client(timeout=30.0, event_hooks=make_logged_hooks(log_source)) as client:
+    with httpx.Client(timeout=30.0, event_hooks=make_logged_hooks("open_meteo")) as client:
         raw_response = fetch_daily_forecast(client, SOURCES[model_source])
 
     for target_date in (today, tomorrow):

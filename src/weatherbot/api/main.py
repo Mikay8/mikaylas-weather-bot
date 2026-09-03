@@ -169,18 +169,12 @@ def forecast_vs_actual(limit: int = 90):
                     d.target_date,
                     nws.predicted_high,
                     om.predicted_high AS open_meteo_predicted_high,
-                    ecmwf.predicted_high AS ecmwf_predicted_high,
-                    ensemble.predicted_high AS ensemble_predicted_high,
                     s.actual_high
                 FROM dates d
                 LEFT JOIN latest_per_source nws
                   ON nws.target_date = d.target_date AND nws.model_source = 'NWS'
                 LEFT JOIN latest_per_source om
                   ON om.target_date = d.target_date AND om.model_source = 'OPEN_METEO'
-                LEFT JOIN latest_per_source ecmwf
-                  ON ecmwf.target_date = d.target_date AND ecmwf.model_source = 'ECMWF'
-                LEFT JOIN latest_per_source ensemble
-                  ON ensemble.target_date = d.target_date AND ensemble.model_source = 'ENSEMBLE'
                 LEFT JOIN settlements s
                   ON s.date = d.target_date AND s.station = 'NYC_CENTRAL_PARK'
                 ORDER BY d.target_date DESC
@@ -269,7 +263,7 @@ _HOURLY_CACHE_TTL_SECONDS = 300  # NWS station observations update ~hourly anywa
 @app.get("/api/weather/hourly")
 def get_hourly_weather():
     """Current conditions (NWS observed) + past hourly (NWS observed) +
-    future hourly (NWS/Open-Meteo/ECMWF averaged) for the Today card — not
+    future hourly (NWS/Open-Meteo averaged) for the Today card — not
     stored, so cached briefly in memory to avoid re-fetching on every
     dashboard poll. See ensemble_forecast.get_ensemble_hourly_view for why
     only the forecast half (future) is blended, not the observed half."""

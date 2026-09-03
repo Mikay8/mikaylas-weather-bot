@@ -10,8 +10,6 @@ export type ForecastVsActual = {
   target_date: string;
   predicted_high: number | null;
   open_meteo_predicted_high: number | null;
-  ecmwf_predicted_high: number | null;
-  ensemble_predicted_high: number | null;
   actual_high: number | null;
 };
 

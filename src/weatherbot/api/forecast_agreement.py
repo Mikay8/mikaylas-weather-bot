@@ -19,8 +19,9 @@ DISAGREEMENT_THRESHOLD_F = 4.0
 
 # Every source besides NWS that's compared against it. Add a new ingest
 # module's model_source here to fold it into the agreement check - no other
-# code changes needed.
-SECONDARY_SOURCES = ["OPEN_METEO", "ECMWF"]
+# code changes needed. ECMWF was dropped 2026-09 to cut down on cron/source
+# count - Open-Meteo alone is still an independent check against NWS.
+SECONDARY_SOURCES = ["OPEN_METEO"]
 
 
 def get_forecast_agreement(target_date: date) -> dict | None:

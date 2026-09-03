@@ -5,7 +5,6 @@ import { fetchForecastAgreement, type ForecastAgreement } from "@/lib/api";
 
 const SOURCE_LABELS: Record<string, string> = {
   OPEN_METEO: "Open-Meteo",
-  ECMWF: "ECMWF",
 };
 
 export default function ForecastAgreementBanner() {

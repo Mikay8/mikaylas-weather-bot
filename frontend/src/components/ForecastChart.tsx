@@ -89,13 +89,9 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
     fullDate: d.target_date,
     Forecast: d.predicted_high,
     "Open-Meteo": d.open_meteo_predicted_high,
-    ECMWF: d.ecmwf_predicted_high,
-    Ensemble: d.ensemble_predicted_high,
     Actual: d.actual_high,
   }));
 
-  // Ensemble's MAE (mean of NWS/Open-Meteo/ECMWF) alongside NWS-alone's,
-  // so the chart can show whether blending sources is actually helping.
   function maeOf(getPredicted: (d: ForecastVsActual) => number | null): string | null {
     const pairs = filtered.filter((d) => getPredicted(d) !== null && d.actual_high !== null);
     if (pairs.length === 0) return null;
@@ -107,7 +103,6 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
   }
 
   const mae = useMemo(() => maeOf((d) => d.predicted_high), [filtered]);
-  const ensembleMae = useMemo(() => maeOf((d) => d.ensemble_predicted_high), [filtered]);
 
   const calendarCells = useMemo(() => {
     if (view !== "calendar" || filtered.length === 0) return [];
@@ -258,36 +253,15 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
               />
               <Line
                 type="monotone"
-                dataKey="ECMWF"
-                stroke="var(--accent-ecmwf)"
-                strokeWidth={2}
-                strokeDasharray="2 3"
-                dot={{ r: 2.5 }}
-                connectNulls
-              />
-              <Line
-                type="monotone"
                 dataKey="Actual"
                 stroke="var(--accent-actual)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 connectNulls
               />
-              <Line
-                type="monotone"
-                dataKey="Ensemble"
-                stroke="var(--accent-ensemble)"
-                strokeWidth={3}
-                dot={{ r: 3.5 }}
-                connectNulls
-              />
             </LineChart>
           </ResponsiveContainer>
           <div className="mt-2 flex flex-wrap items-center gap-4 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-tertiary)]">
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-[3px] w-3.5" style={{ background: "var(--accent-ensemble)" }} />
-              Ensemble (NWS + Open-Meteo + ECMWF avg)
-            </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-0.5 w-3.5" style={{ background: "var(--accent-forecast)" }} />
               Forecast high (NWS)
@@ -303,23 +277,13 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
               Open-Meteo
             </span>
             <span className="flex items-center gap-1.5">
-              <span
-                className="inline-block h-0.5 w-3.5"
-                style={{
-                  background: "repeating-linear-gradient(90deg, var(--accent-ecmwf) 0 2px, transparent 2px 5px)",
-                }}
-              />
-              ECMWF
-            </span>
-            <span className="flex items-center gap-1.5">
               <span className="inline-block h-0.5 w-3.5" style={{ background: "var(--accent-actual)" }} />
               Actual high (NWS CLI)
             </span>
           </div>
-          {(mae !== null || ensembleMae !== null) && (
+          {mae !== null && (
             <div className="mt-2 flex justify-end gap-4 font-mono text-xs text-[var(--foreground-tertiary)]">
-              {mae !== null && <span>NWS mean abs. error: {mae}°F</span>}
-              {ensembleMae !== null && <span>Ensemble mean abs. error: {ensembleMae}°F</span>}
+              <span>NWS mean abs. error: {mae}°F</span>
             </div>
           )}
         </>
@@ -425,20 +389,10 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
 
             {(() => {
               const secondary = [
-                selectedDay.predicted_high !== null && {
-                  key: "nws",
-                  label: "NWS forecast",
-                  value: selectedDay.predicted_high,
-                },
                 selectedDay.open_meteo_predicted_high !== null && {
                   key: "open-meteo",
                   label: "Open-Meteo forecast",
                   value: selectedDay.open_meteo_predicted_high,
-                },
-                selectedDay.ecmwf_predicted_high !== null && {
-                  key: "ecmwf",
-                  label: "ECMWF forecast",
-                  value: selectedDay.ecmwf_predicted_high,
                 },
               ].filter((s): s is { key: string; label: string; value: number } => s !== false);
               const colCount = 2 + secondary.length;
@@ -454,13 +408,13 @@ export default function ForecastChart({ data }: { data: ForecastVsActual[] }) {
                 <div className={`grid divide-x divide-y divide-[var(--card-border)] ${gridColsClass}`}>
                   <div className="flex flex-col items-center gap-2 px-5 py-6">
                     <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-tertiary)]">
-                      Ensemble forecast
+                      NWS forecast
                     </span>
-                    {selectedDay.ensemble_predicted_high !== null ? (
+                    {selectedDay.predicted_high !== null ? (
                       <>
-                        <WeatherIcon temp={selectedDay.ensemble_predicted_high} size={32} />
+                        <WeatherIcon temp={selectedDay.predicted_high} size={32} />
                         <span className="font-mono text-3xl font-light text-[var(--foreground)]">
-                          {selectedDay.ensemble_predicted_high}°
+                          {selectedDay.predicted_high}°
                         </span>
                       </>
                     ) : (

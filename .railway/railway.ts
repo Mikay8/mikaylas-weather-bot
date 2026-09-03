@@ -45,11 +45,16 @@ export default defineRailway(() => {
     build: { buildCommand: "pip install -r requirements.txt" },
     deploy: {
       startCommand: "python3 -m weatherbot.ingest.nws_forecast",
-      // 5x/day: the original 4 aligned with NWS forecast update cadence,
+      // 7x/day: the original 4 aligned with NWS forecast update cadence,
       // plus 10:00 UTC (6 AM Eastern, fixed year-round - no DST handling)
       // added so bot-cron trades on a forecast pulled minutes earlier
-      // instead of one up to 4h stale from the 6:00 UTC run.
-      cronSchedule: "0 6,10,11,17,22 * * *",
+      // instead of one up to 4h stale from the 6:00 UTC run, plus 8:00 and
+      // 9:00 UTC (4/5 AM Eastern) added alongside bot-cron's matching
+      // earlier runs - see the bot-cron comment for why those exist. Without
+      // these, an 8:10/9:10 UTC bot-cron run would just re-evaluate the
+      // stale 6:00 UTC forecast a second and third time instead of getting
+      // genuinely fresh data to retry against.
+      cronSchedule: "0 6,8,9,10,11,17,22 * * *",
       restartPolicyType: "NEVER",
       region: REGION,
       limitOverride: CRON_LIMITS,
@@ -64,39 +69,7 @@ export default defineRailway(() => {
       startCommand: "python3 -m weatherbot.ingest.open_meteo_forecast",
       // Same cadence as forecast-cron so a same-cycle NWS/Open-Meteo
       // comparison is never comparing a fresh pull against a stale one.
-      cronSchedule: "0 6,10,11,17,22 * * *",
-      restartPolicyType: "NEVER",
-      region: REGION,
-      limitOverride: CRON_LIMITS,
-    },
-    env: sharedEnv,
-  });
-
-  const ecmwfCron = service("ecmwf-cron", {
-    ...repo,
-    build: { buildCommand: "pip install -r requirements.txt" },
-    deploy: {
-      startCommand: "python3 -m weatherbot.ingest.ecmwf_forecast",
-      // Same cadence as forecast-cron/open-meteo-cron - see comment above.
-      cronSchedule: "0 6,10,11,17,22 * * *",
-      restartPolicyType: "NEVER",
-      region: REGION,
-      limitOverride: CRON_LIMITS,
-    },
-    env: sharedEnv,
-  });
-
-  const ensembleCron = service("ensemble-cron", {
-    ...repo,
-    build: { buildCommand: "pip install -r requirements.txt" },
-    deploy: {
-      startCommand: "python3 -m weatherbot.ingest.ensemble_forecast",
-      // 5 min after forecast-cron/open-meteo-cron/ecmwf-cron, giving them a
-      // buffer to land first - there's no explicit cross-service ordering
-      // in Railway cron, so this averages whichever of the three have
-      // reported by the time it runs (same pattern as bot-cron running
-      // 10 min after market-cron).
-      cronSchedule: "5 6,10,11,17,22 * * *",
+      cronSchedule: "0 6,8,9,10,11,17,22 * * *",
       restartPolicyType: "NEVER",
       region: REGION,
       limitOverride: CRON_LIMITS,
@@ -139,12 +112,30 @@ export default defineRailway(() => {
     build: { buildCommand: "pip install -r requirements.txt" },
     deploy: {
       startCommand: "python3 -m weatherbot.api.bot",
-      // Once/day at 10:10 UTC (6 AM Eastern, fixed year-round - no DST
-      // handling - plus 10 min buffer after the 10:00 UTC forecast/
-      // ensemble/market pulls above) - determined to be the most accurate
-      // time to predict that day's high. No-ops immediately if the bot is
-      // disabled in bot_settings (off by default).
-      cronSchedule: "10 10 * * *",
+      // 8:10, 9:10, 10:10 UTC (4, 5, 6 AM Eastern, fixed year-round - no DST
+      // handling). The 10:10 run is the original - see the historical note
+      // below. The two earlier runs are a deliberate second (and third)
+      // chance at the same trading day: if forecast_agreement.py's
+      // disagreement gate blocks the 10:10 run on a bad/outlier pull from
+      // one source (happened 2026-09-03 - NWS returned 74F against
+      // Open-Meteo/ECMWF both ~84F, self-corrected within the hour),
+      // skip_if_position_exists means an earlier successful run just makes
+      // the later ones no-ops rather than double-betting - see bot.py.
+      // NOTE: as of 2026-09-03 this trades on less accurate data than the
+      // 10:10 run - a by-hour MAE/bias breakdown of NWS/Open-Meteo/ECMWF/
+      // ENSEMBLE history found the 06:00 UTC (2 AM Eastern) pull is
+      // consistently the WORST-performing slot of the day, not the best,
+      // and 17:00/22:00 UTC (1 PM/6 PM Eastern) the best - there's no
+      // pre-dawn forecast pull in this pipeline more accurate than the
+      // ones already in forecast-cron's 6,10,11,17,22 UTC schedule. Kept
+      // anyway as extra chances to dodge a repeat of the outlier-data
+      // failure above, not because early-morning data is better.
+      //
+      // Original 10:10 UTC run: 10 min buffer after the 10:00 UTC
+      // forecast/ensemble/market pulls above - determined to be the most
+      // accurate time to predict that day's high. No-ops immediately if
+      // the bot is disabled in bot_settings (off by default).
+      cronSchedule: "10 8,9,10 * * *",
       restartPolicyType: "NEVER",
       region: REGION,
       limitOverride: CRON_LIMITS,
@@ -240,8 +231,6 @@ export default defineRailway(() => {
       postgresVolume,
       forecastCron,
       openMeteoCron,
-      ecmwfCron,
-      ensembleCron,
       marketCron,
       settlementCron,
       botCron,

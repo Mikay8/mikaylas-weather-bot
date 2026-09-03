@@ -1,5 +1,5 @@
 """Persists outbound API request/response pairs to `api_call_logs` so the
-Settings page can show the last 24h of traffic to NWS/IEM/ECMWF/Kalshi.
+Settings page can show the last 24h of traffic to NWS/IEM/Open-Meteo/Kalshi.
 
 Hooked into each module's httpx.Client via event_hooks (see logged_client())
 rather than wrapping every call site individually — request/response bodies
