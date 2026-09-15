@@ -107,6 +107,30 @@ export default defineRailway(() => {
     env: sharedEnv,
   });
 
+  const gfsMosCron = service("gfs-mos-cron", {
+    ...repo,
+    build: { buildCommand: "pip install -r requirements.txt" },
+    deploy: {
+      startCommand: "python3 -m weatherbot.backtest.iem_forecast_backfill",
+      // No --start/--end: defaults to a trailing window ending today (see
+      // DEFAULT_TRAILING_DAYS in iem_forecast_backfill.py) - covers today's
+      // MOS run plus a self-healing buffer for any missed day, safe to
+      // re-run daily since storage is ON CONFLICT DO NOTHING. This is the
+      // only thing that keeps GFS_MOS - what the trading model is actually
+      // calibrated on and what recommendations.py requires - flowing; it
+      // used to be a manual-only script, which silently stopped being run
+      // 2026-09-02 and left the bot trading on a stale/wrong forecast
+      // source for two weeks before being caught. Runs at 6:50 UTC: after
+      // settlement-cron (6:40 UTC), clear of analyst-cron (7:00 UTC), well
+      // before bot-cron's first 8:10 UTC run.
+      cronSchedule: "50 6 * * *",
+      restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
+    },
+    env: sharedEnv,
+  });
+
   const botCron = service("bot-cron", {
     ...repo,
     build: { buildCommand: "pip install -r requirements.txt" },
@@ -264,6 +288,7 @@ export default defineRailway(() => {
       openMeteoCron,
       marketCron,
       settlementCron,
+      gfsMosCron,
       botCron,
       analystCron,
       api,
