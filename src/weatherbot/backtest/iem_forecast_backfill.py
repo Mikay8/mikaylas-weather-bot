@@ -133,9 +133,20 @@ def run(start: date, end: date) -> None:
     )
 
 
+# Trailing window used when --start/--end are omitted (cron mode, see
+# gfs-mos-cron in .railway/railway.ts): wide enough to self-heal a
+# transient IEM archive gap (a single 404 day, a brief outage) without
+# needing a manual re-run, cheap to over-fetch since store_forecast's
+# ON CONFLICT DO NOTHING makes re-covering already-stored days a no-op.
+DEFAULT_TRAILING_DAYS = 5
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", required=True, help="YYYY-MM-DD")
-    parser.add_argument("--end", required=True, help="YYYY-MM-DD")
+    parser.add_argument("--start", help="YYYY-MM-DD (default: today minus %(default)s days)")
+    parser.add_argument("--end", help="YYYY-MM-DD (default: today)")
     args = parser.parse_args()
-    run(date.fromisoformat(args.start), date.fromisoformat(args.end))
+
+    today = datetime.now(timezone.utc).date()
+    start = date.fromisoformat(args.start) if args.start else today - timedelta(days=DEFAULT_TRAILING_DAYS)
+    end = date.fromisoformat(args.end) if args.end else today
+    run(start, end)
