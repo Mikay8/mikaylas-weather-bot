@@ -15,7 +15,6 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
-from weatherbot.api.forecast_agreement import SECONDARY_SOURCES
 from weatherbot.api.settle import kalshi_fee
 from weatherbot.backtest.calibration import load_paired_history
 from weatherbot.backtest.model import bracket_probability, fit_error_stats_seasonal
@@ -54,19 +53,22 @@ def _latest_predicted_high(session, target_date) -> tuple[float, datetime] | Non
     # (forecast_agreement.py's disagreement gate in bot.py needs them, and
     # it keeps the door open to properly refit a multi-source model later
     # once there's enough paired history to do it right) - they're just not
-    # the trading input anymore. Excludes SECONDARY_SOURCES and ENSEMBLE so
-    # a same-day gap in the GFS_MOS cron can't silently fall back to a
-    # worse-calibrated source.
+    # the trading input anymore. Excludes everything but GFS_MOS itself so
+    # a gap in the GFS_MOS cron can't silently fall back to a source this
+    # model's bias/stdev correction was never fit against - found 2026-09-12
+    # after iem_forecast_backfill.py (a manual-only script, no cron) stopped
+    # being re-run 2026-09-02 and NWS rows silently took over as "latest",
+    # causing real trading losses on a mismatched forecast/calibration pair.
     row = session.execute(
         text(
             """
             SELECT predicted_high, forecast_time FROM forecasts
-            WHERE target_date = :target_date AND model_source NOT IN :excluded
+            WHERE target_date = :target_date AND model_source = 'GFS_MOS'
             ORDER BY forecast_time DESC
             LIMIT 1
             """
         ),
-        {"target_date": target_date, "excluded": tuple([*SECONDARY_SOURCES, "ENSEMBLE"])},
+        {"target_date": target_date},
     ).fetchone()
     return (float(row[0]), row[1]) if row and row[0] is not None else None
 
