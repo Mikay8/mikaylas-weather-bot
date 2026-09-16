@@ -11,7 +11,6 @@ its own track record over time.
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
@@ -21,21 +20,6 @@ from weatherbot.backtest.model import bracket_probability, fit_error_stats_seaso
 from weatherbot.db import get_session
 
 MIN_EDGE_THRESHOLD = 0.03  # fee-adjusted edge below this isn't worth surfacing
-EASTERN = ZoneInfo("America/New_York")
-
-
-def is_forecast_stale(forecast_time: datetime, target_date) -> bool:
-    """True if `forecast_time` predates the current NYC calendar day while
-    `target_date` is today or already past - i.e. a same-day trade is about
-    to use a forecast pulled on a previous day, when a fresher same-day pull
-    should exist (forecast-cron runs at 2am/7am/1pm/6pm NYC). A next-day
-    target_date (the normal case: trading tomorrow's market this evening)
-    is never considered stale by this check - an evening-before pull is
-    exactly the expected input there."""
-    today_nyc = datetime.now(EASTERN).date()
-    if target_date > today_nyc:
-        return False
-    return forecast_time.astimezone(EASTERN).date() < today_nyc
 
 
 def _latest_predicted_high(session, target_date) -> tuple[float, datetime] | None:
@@ -108,7 +92,18 @@ def build_recommendations() -> list[dict]:
             if forecast_lookup is None:
                 continue
             predicted_high, forecast_time = forecast_lookup
-            stale = is_forecast_stale(forecast_time, m.target_date)
+            # No same-day-pull freshness check: GFS_MOS (the only source
+            # _latest_predicted_high returns) has forecast_time = its 00Z
+            # MOS run, which by IEM MOS convention is always the *prior*
+            # Eastern evening for any given target_date, never same-day -
+            # a same-day cutoff would reject every GFS_MOS row
+            # unconditionally (found 2026-09-16: 3 straight days of zero
+            # trades once the source was locked to GFS_MOS-only, see
+            # git history). A GFS_MOS row's presence for this target_date
+            # (already checked above) is the only freshness signal that
+            # applies - there's exactly one true runtime per target_date,
+            # not a staler/fresher choice among several.
+            stale = False
 
             stats = fit_error_stats_seasonal(dated_errors, m.target_date)
             model_prob = bracket_probability(
