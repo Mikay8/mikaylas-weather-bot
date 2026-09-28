@@ -1,6 +1,6 @@
 httpx>=0.27
 scipy>=1.12
-SQLAlchemy>=2.0
+SQLAlchemy>=2.0,<2.1  # 2.1 switched bare postgresql:// URLs to the psycopg (v3) driver by default, which isn't installed - see psycopg2-binary below
 psycopg2-binary>=2.9
 python-dotenv>=1.0
 fastapi>=0.115
