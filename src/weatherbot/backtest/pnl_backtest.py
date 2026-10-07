@@ -1,14 +1,25 @@
 """Phase 3 P&L backtest: replays the bot's actual trade decision (recommendations.py
-+ bot.py's edge-threshold gate) against real historical market_snapshots and
-settlements, so the actual dollar outcome of different edge_threshold settings
-can be evaluated - not just forecast calibration (calibration.py) or live-only
-recommendations (recommendations.py).
++ bot.py's favorite/confidence-floor gate) against real historical
+market_snapshots and settlements, so the actual dollar outcome of different
+min_favorite_prob settings can be evaluated - not just forecast calibration
+(calibration.py) or live-only recommendations (recommendations.py).
 
 Walk-forward like calibration.py: for a market closing on target_date, the
 model's bias/stdev correction is fit only on settlements strictly before
 target_date, and the forecast/market snapshot used is the latest one at or
 before a chosen decision_time - never information from after the trade would
 have been placed.
+
+v2: side selection changed from "bet whichever side has the bigger
+model_prob - market_prob edge" to "bet the model's favorite side (whichever
+of YES/NO it rates more likely), only if that probability clears
+min_favorite_prob" - this backtest is what showed the edge-chasing rule
+losing money at every threshold (-$14 to -$50 per $1 staked across 324
+historical markets) while the favorite/confidence-floor rule is consistently
+profitable from ~0.70 up, peaking ~0.76-0.80. See recommendations.py's
+MIN_FAVORITE_PROB comment for the full writeup. edge/fee_adjusted_edge are
+kept on TradeResult for visibility into how the chosen side compared to the
+market price, not because they gate the trade anymore.
 
 Deliberately out of scope for v1 (see recommendations.py / bot.py for the
 live equivalents, not replayed here):
@@ -18,8 +29,8 @@ live equivalents, not replayed here):
   - skip_if_position_exists - a single-position-per-day book-keeping rule,
     not a pricing/edge question.
 Both are cheap to layer in once there's enough history for them to matter;
-until then this scores the core edge-vs-price-vs-fee mechanics only, which is
-the part a threshold setting actually controls.
+until then this scores the core favorite-vs-price-vs-fee mechanics only,
+which is the part a confidence-floor setting actually controls.
 """
 
 from dataclasses import dataclass, field
@@ -32,7 +43,7 @@ from weatherbot.api.settle import kalshi_fee, yes_wins
 from weatherbot.backtest.model import ErrorStats, bracket_probability, fit_error_stats_seasonal
 from weatherbot.db import get_session
 
-DEFAULT_THRESHOLDS = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.07, 0.10]
+DEFAULT_MIN_FAVORITE_PROBS = [0.5, 0.6, 0.7, 0.72, 0.74, 0.76, 0.78, 0.8, 0.85, 0.9, 0.95]
 MIN_TRAIN_DAYS = 30
 
 
@@ -42,14 +53,15 @@ class TradeResult:
     target_date: date
     side: str
     price: float
-    fee_adjusted_edge: float
+    favorite_prob: float  # model's stated probability for the side taken
+    fee_adjusted_edge: float  # vs. market price - logged, doesn't gate the trade
     won: bool
     pnl: float  # per $1 staked
 
 
 @dataclass
 class ThresholdReport:
-    threshold: float
+    min_favorite_prob: float
     trades: list[TradeResult] = field(default_factory=list)
 
     @property
@@ -70,7 +82,7 @@ class ThresholdReport:
 
     def summary(self) -> dict:
         return {
-            "threshold": self.threshold,
+            "min_favorite_prob": self.min_favorite_prob,
             "n_trades": self.n,
             "win_rate": round(self.win_rate, 4) if self.win_rate is not None else None,
             "total_pnl_per_$1_staked": round(self.total_pnl, 4),
@@ -138,6 +150,12 @@ def load_dated_errors(session) -> list[tuple[date, float]]:
 
 
 def simulate_trade(market: dict, stats: ErrorStats, predicted_high: float) -> TradeResult | None:
+    """Side = the model's favorite (whichever of YES/NO it rates more
+    likely) - see recommendations.py's MIN_FAVORITE_PROB for why, not
+    whichever side has the bigger edge over the market price. Returns a
+    TradeResult regardless of favorite_prob - the confidence floor is
+    applied by run() when building per-threshold reports, same as the old
+    edge-threshold filter did."""
     model_prob = bracket_probability(
         predicted_high,
         stats,
@@ -149,11 +167,14 @@ def simulate_trade(market: dict, stats: ErrorStats, predicted_high: float) -> Tr
     edge_yes = model_prob - market_prob
     edge_no = (1 - model_prob) - (1 - market_prob)
 
-    if edge_yes >= edge_no:
-        side, edge, price = "yes", edge_yes, market["yes_ask"]
+    if model_prob >= 0.5:
+        side, edge, price, favorite_prob = "yes", edge_yes, market["yes_ask"], model_prob
     else:
-        side, edge, price = "no", edge_no, (
-            Decimal("1") - market["yes_bid"] if market["yes_bid"] is not None else None
+        side, edge, price, favorite_prob = (
+            "no",
+            edge_no,
+            Decimal("1") - market["yes_bid"] if market["yes_bid"] is not None else None,
+            1 - model_prob,
         )
 
     if price is None or not (0 < price < 1):
@@ -177,13 +198,16 @@ def simulate_trade(market: dict, stats: ErrorStats, predicted_high: float) -> Tr
         target_date=market["target_date"],
         side=side,
         price=float(price),
+        favorite_prob=favorite_prob,
         fee_adjusted_edge=fee_adjusted_edge,
         won=won,
         pnl=pnl,
     )
 
 
-def run(thresholds: list[float] = DEFAULT_THRESHOLDS, min_train_days: int = MIN_TRAIN_DAYS) -> dict:
+def run(
+    min_favorite_probs: list[float] = DEFAULT_MIN_FAVORITE_PROBS, min_train_days: int = MIN_TRAIN_DAYS
+) -> dict:
     session = get_session()
     try:
         dated_errors_all = load_dated_errors(session)
@@ -212,10 +236,10 @@ def run(thresholds: list[float] = DEFAULT_THRESHOLDS, min_train_days: int = MIN_
                 all_trades.append(trade)
 
         reports = []
-        for threshold in thresholds:
+        for min_favorite_prob in min_favorite_probs:
             report = ThresholdReport(
-                threshold=threshold,
-                trades=[t for t in all_trades if t.fee_adjusted_edge >= threshold],
+                min_favorite_prob=min_favorite_prob,
+                trades=[t for t in all_trades if t.favorite_prob >= min_favorite_prob],
             )
             reports.append(report.summary())
 

@@ -102,6 +102,7 @@ export type Recommendation = {
   model_prob: number;
   market_prob: number;
   side: "yes" | "no";
+  favorite_prob: number;
   edge: number;
   fee_adjusted_edge: number | null;
   recommend: boolean;
@@ -243,7 +244,7 @@ export async function backfillSettlements(limit = 14) {
 export type BotSettings = {
   enabled: boolean;
   bet_amount: number;
-  edge_threshold: number;
+  min_favorite_prob: number;
   skip_if_position_exists: boolean;
   updated_at: string;
 };
