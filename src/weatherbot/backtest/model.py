@@ -124,6 +124,26 @@ def fit_error_stats_seasonal(
     return fit_error_stats([e for _, e in dated_errors], inflation_factor=inflation_factor)
 
 
+# actual_high (settlements) and predicted_high (forecasts) are both reported
+# in whole degrees F - NWS's CLI report and GFS_MOS's n_x both round to the
+# integer - so the true outcome space is discrete, not the continuum a plain
+# Normal CDF assumes. Applying norm.cdf/sf directly at a bracket's integer
+# edge systematically understates the probability of landing on or next to
+# that edge: e.g. a 1F-wide 'between' bracket [k, k+1] (both ends included,
+# per yes_wins) actually contains exactly the two integers {k, k+1} - the
+# continuous model only credits it the sliver of density in between them.
+# The standard fix for scoring a continuous distribution against discrete
+# integer outcomes is a +/-0.5 continuity correction: shift each boundary
+# out by half a degree before evaluating the CDF, so e.g. [k, k+1] is scored
+# as [k-0.5, k+1+0.5]. Verified against real trade history (2026-09): this
+# roughly doubles the model's stated probability for the 1F-wide brackets
+# the bot trades most often, matching the observed loss pattern - 71% of
+# losing trades settled exactly on a bracket edge vs. 7% of winning trades,
+# which a correctly-dispersed continuous model would not produce (see trade
+# analysis discussion this fix came out of).
+CONTINUITY_CORRECTION = 0.5
+
+
 def bracket_probability(
     predicted_high: float,
     stats: ErrorStats,
@@ -135,6 +155,10 @@ def bracket_probability(
     Normal(predicted_high + bias, stdev), matching settle.py's yes_wins
     semantics: 'greater' wins if actual > bracket_low, 'less' wins if
     actual < bracket_high, 'between' wins if bracket_low <= actual <= bracket_high.
+
+    Applies a +/-0.5 continuity correction at each bracket edge - see
+    CONTINUITY_CORRECTION above - since actual_high/predicted_high are both
+    whole-degree integers, not a true continuum.
     """
     mean = predicted_high + stats.bias
     sd = stats.stdev
@@ -142,12 +166,17 @@ def bracket_probability(
         raise ValueError("stdev must be positive")
 
     if strike_type == "greater":
-        return float(norm.sf(bracket_low, loc=mean, scale=sd))
+        # YES wins for actual in {bracket_low+1, bracket_low+2, ...} - the
+        # lowest included integer is bracket_low+1, half a degree below that.
+        return float(norm.sf(bracket_low + CONTINUITY_CORRECTION, loc=mean, scale=sd))
     if strike_type == "less":
-        return float(norm.cdf(bracket_high, loc=mean, scale=sd))
+        # YES wins for actual in {..., bracket_high-2, bracket_high-1} - the
+        # highest included integer is bracket_high-1, half a degree above that.
+        return float(norm.cdf(bracket_high - CONTINUITY_CORRECTION, loc=mean, scale=sd))
     if strike_type == "between":
+        # YES wins for actual in {bracket_low, ..., bracket_high} inclusive.
         return float(
-            norm.cdf(bracket_high, loc=mean, scale=sd)
-            - norm.cdf(bracket_low, loc=mean, scale=sd)
+            norm.cdf(bracket_high + CONTINUITY_CORRECTION, loc=mean, scale=sd)
+            - norm.cdf(bracket_low - CONTINUITY_CORRECTION, loc=mean, scale=sd)
         )
     raise ValueError(f"Unknown strike_type: {strike_type}")

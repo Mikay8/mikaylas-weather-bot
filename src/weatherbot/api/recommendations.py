@@ -19,7 +19,23 @@ from weatherbot.backtest.calibration import load_paired_history
 from weatherbot.backtest.model import bracket_probability, fit_error_stats_seasonal
 from weatherbot.db import get_session
 
-MIN_EDGE_THRESHOLD = 0.03  # fee-adjusted edge below this isn't worth surfacing
+# v1's rule bet whichever side had the bigger (model_prob - market_prob) edge -
+# chasing disagreement with the market. Walk-forward backtest against real
+# market_snapshots + settlements history (324 markets) showed this loses money
+# at every edge threshold tried (-$14 to -$50 per $1 staked): the model's own
+# miscalibration pulled it hardest toward exactly the markets where it
+# disagreed with the market *because* it was wrong, not because it had real
+# insight - mostly cheap long-shot tickets (~15-17% win rate) that looked
+# attractive only because the model, not the market, was mispriced.
+#
+# Betting the model's favorite side (whichever of YES/NO it rates more likely)
+# above a confidence floor - ignoring the market's price for side selection
+# entirely, using it only to know what we'd pay - backtests as consistently
+# profitable once the floor clears ~0.70, peaking around 0.76-0.80 (94% win
+# rate, +$8-10 total P&L over ~190-220 trades) and staying positive up to 0.98
+# (100% win rate, fewer trades). Below ~0.70 it's roughly breakeven - too many
+# low-confidence bets dilute the edge. 0.78 is the sweet spot in that sweep.
+MIN_FAVORITE_PROB = 0.78
 
 
 def _latest_predicted_high(session, target_date) -> tuple[float, datetime] | None:
@@ -117,11 +133,19 @@ def build_recommendations() -> list[dict]:
             edge_yes = model_prob - market_prob
             edge_no = (1 - model_prob) - (1 - market_prob)
 
-            if edge_yes >= edge_no:
-                side, edge, price = "yes", edge_yes, m.yes_ask
+            # Side = the model's favorite (whichever of YES/NO it rates more
+            # likely), not whichever has the bigger edge over the market
+            # price - see MIN_FAVORITE_PROB above for why. edge/fee_adjusted_edge
+            # are still computed and logged below for visibility into how this
+            # compares to the market, but no longer gate the recommendation.
+            if model_prob >= 0.5:
+                side, edge, price, favorite_prob = "yes", edge_yes, m.yes_ask, model_prob
             else:
-                side, edge, price = "no", edge_no, (
-                    Decimal("1") - m.yes_bid if m.yes_bid is not None else None
+                side, edge, price, favorite_prob = (
+                    "no",
+                    edge_no,
+                    Decimal("1") - m.yes_bid if m.yes_bid is not None else None,
+                    1 - model_prob,
                 )
 
             fee_adjusted_edge = None
@@ -165,12 +189,13 @@ def build_recommendations() -> list[dict]:
                     "model_prob": round(model_prob, 4),
                     "market_prob": round(market_prob, 4),
                     "side": side,
+                    "favorite_prob": round(favorite_prob, 4),
                     "edge": round(edge, 4),
                     "fee_adjusted_edge": round(fee_adjusted_edge, 4)
                     if fee_adjusted_edge is not None
                     else None,
-                    "recommend": fee_adjusted_edge is not None
-                    and fee_adjusted_edge >= MIN_EDGE_THRESHOLD
+                    "recommend": price is not None
+                    and favorite_prob >= MIN_FAVORITE_PROB
                     and not stale,
                     "volume": m.volume,
                     "open_interest": m.open_interest,
@@ -178,7 +203,7 @@ def build_recommendations() -> list[dict]:
             )
 
         session.commit()
-        recs.sort(key=lambda r: r["fee_adjusted_edge"] or -1, reverse=True)
+        recs.sort(key=lambda r: r["favorite_prob"], reverse=True)
         return recs
     finally:
         session.close()

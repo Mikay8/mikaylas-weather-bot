@@ -1,8 +1,8 @@
 """Auto-trading bot: evaluates open recommendations and places a paper bet
-whenever fee-adjusted edge crosses the configured threshold, skipping any
-market where a position (bot or human) already exists for that day if
-skip_if_position_exists is on. All bot settings live in bot_settings (a
-single-row table, same pattern as paper_wallet) so they're editable from
+whenever the model's favorite side clears the configured confidence floor,
+skipping any market where a position (bot or human) already exists for that
+day if skip_if_position_exists is on. All bot settings live in bot_settings
+(a single-row table, same pattern as paper_wallet) so they're editable from
 the Settings page without a redeploy.
 
 Runs on its own schedule (bot-cron) independent of the dashboard - see
@@ -29,7 +29,7 @@ def _get_settings(session) -> dict:
     row = session.execute(
         text(
             """
-            SELECT enabled, bet_amount, edge_threshold, skip_if_position_exists, updated_at
+            SELECT enabled, bet_amount, min_favorite_prob, skip_if_position_exists, updated_at
             FROM bot_settings
             LIMIT 1
             """
@@ -52,7 +52,7 @@ def get_bot_settings():
 class BotSettingsUpdate(BaseModel):
     enabled: bool | None = None
     bet_amount: float | None = None
-    edge_threshold: float | None = None
+    min_favorite_prob: float | None = None
     skip_if_position_exists: bool | None = None
 
 
@@ -63,8 +63,8 @@ def update_bot_settings(req: BotSettingsUpdate):
         raise HTTPException(status_code=400, detail="No fields to update")
     if "bet_amount" in fields and fields["bet_amount"] <= 0:
         raise HTTPException(status_code=422, detail="bet_amount must be positive")
-    if "edge_threshold" in fields and not (0 <= fields["edge_threshold"] <= 1):
-        raise HTTPException(status_code=422, detail="edge_threshold must be between 0 and 1")
+    if "min_favorite_prob" in fields and not (0 <= fields["min_favorite_prob"] <= 1):
+        raise HTTPException(status_code=422, detail="min_favorite_prob must be between 0 and 1")
 
     session = get_session()
     try:
@@ -80,15 +80,16 @@ def update_bot_settings(req: BotSettingsUpdate):
 
 
 def run_bot_cycle() -> dict:
-    """Evaluate current recommendations and place paper trades for any that
-    clear the configured edge threshold. Returns a summary for logging."""
+    """Evaluate current recommendations and place paper trades for any whose
+    favorite side clears the configured confidence floor. Returns a summary
+    for logging."""
     session = get_session()
     try:
         settings = _get_settings(session)
         if not settings["enabled"]:
             return {"skipped": "bot disabled", "trades_placed": 0}
 
-        threshold = float(settings["edge_threshold"])
+        min_favorite_prob = float(settings["min_favorite_prob"])
         amount = float(settings["bet_amount"])
         skip_if_position_exists = settings["skip_if_position_exists"]
 
@@ -106,9 +107,9 @@ def run_bot_cycle() -> dict:
 
         for rec in recs:
             target_date = str(rec["target_date"])
-            fee_adjusted_edge = rec["fee_adjusted_edge"]
+            favorite_prob = rec["favorite_prob"]
 
-            if fee_adjusted_edge is None or fee_adjusted_edge < threshold:
+            if favorite_prob < min_favorite_prob:
                 continue
             if skip_if_position_exists and target_date in existing_dates:
                 skipped.append({"contract_id": rec["contract_id"], "reason": "position exists"})

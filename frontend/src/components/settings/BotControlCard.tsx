@@ -6,7 +6,7 @@ import { fetchBotSettings, runBotCycle, updateBotSettings, type BotSettings } fr
 export default function BotControlCard() {
   const [settings, setSettings] = useState<BotSettings | null>(null);
   const [betAmountInput, setBetAmountInput] = useState("25");
-  const [thresholdInput, setThresholdInput] = useState("3");
+  const [thresholdInput, setThresholdInput] = useState("78");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -15,7 +15,7 @@ export default function BotControlCard() {
     fetchBotSettings().then((s) => {
       setSettings(s);
       setBetAmountInput(String(s.bet_amount));
-      setThresholdInput(String(Math.round(s.edge_threshold * 100)));
+      setThresholdInput(String(Math.round(s.min_favorite_prob * 100)));
     });
   }, []);
 
@@ -41,14 +41,14 @@ export default function BotControlCard() {
       return;
     }
     if (Number.isNaN(thresholdPct) || thresholdPct < 0 || thresholdPct > 100) {
-      setMessage("Enter a valid edge threshold (0-100%)");
+      setMessage("Enter a valid confidence floor (0-100%)");
       return;
     }
     setSaving(true);
     try {
       const updated = await updateBotSettings({
         bet_amount: betAmount,
-        edge_threshold: thresholdPct / 100,
+        min_favorite_prob: thresholdPct / 100,
       });
       setSettings(updated);
       setMessage("Bot parameters saved.");
@@ -104,7 +104,7 @@ export default function BotControlCard() {
           <div className="text-sm font-medium">Auto-trading bot</div>
           <p className="mt-0.5 text-xs text-[var(--foreground-secondary)]">
             {settings.enabled
-              ? "On — checks open markets once a day at 6am Eastern and places a paper trade when the edge clears your threshold."
+              ? "On — checks open markets once a day at 6am Eastern and places a paper trade on the model's favorite side when its confidence clears your floor."
               : "Off — no trades are placed automatically. Everything runs manually."}
           </p>
         </div>
@@ -138,7 +138,7 @@ export default function BotControlCard() {
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--foreground-secondary)]">
-            Minimum fee-adjusted edge (%)
+            Minimum confidence to trade (%)
           </label>
           <input
             type="number"
