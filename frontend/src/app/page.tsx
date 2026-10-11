@@ -39,6 +39,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [marketsDay, setMarketsDay] = useState<"today" | "tomorrow">("today");
+  const [tradeHistoryExpanded, setTradeHistoryExpanded] = useState(true);
 
   const loadAll = useCallback(async () => {
     try {
@@ -317,11 +318,22 @@ export default function Home() {
         </div>
 
         <div className="mt-5 rounded border border-[var(--card-border)] bg-[var(--card-bg)] p-6">
-          <h2 className="mb-[18px] text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground-tertiary)]">
-            Trade History
-          </h2>
-          {wallet && (
-            <TradeHistory trades={wallet.settled_trades} startingBalance={wallet.starting_balance} />
+          <button
+            onClick={() => setTradeHistoryExpanded((e) => !e)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+            aria-expanded={tradeHistoryExpanded}
+          >
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground-tertiary)]">
+              Trade History
+            </h2>
+            <span aria-hidden className="text-[11px] text-[var(--foreground-tertiary)]">
+              {tradeHistoryExpanded ? "▲" : "▼"}
+            </span>
+          </button>
+          {tradeHistoryExpanded && wallet && (
+            <div className="mt-[18px]">
+              <TradeHistory trades={wallet.settled_trades} startingBalance={wallet.starting_balance} />
+            </div>
           )}
         </div>
       </main>
