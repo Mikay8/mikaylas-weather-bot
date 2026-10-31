@@ -5,7 +5,9 @@ Public market data (GET /markets) does not require authentication.
 """
 
 import json
+import random
 import re
+import time
 from datetime import date, datetime, timezone
 
 import httpx
@@ -19,6 +21,13 @@ load_dotenv()
 
 KALSHI_BASE = "https://external-api.kalshi.com/trade-api/v2"
 SERIES_TICKER = "KXHIGHNY"
+
+# Kalshi returns 429 (and occasionally 5xx) transiently and sends no
+# Retry-After header, so retry with exponential backoff + jitter instead
+# of crashing the hourly cron run on the first rate-limit response.
+MAX_ATTEMPTS = 5
+RETRY_BASE_DELAY_SECONDS = 2.0
+RETRY_MAX_DELAY_SECONDS = 30.0
 
 # Ticker format: KXHIGHNY-26AUG19-T92 -> event date 2026-08-19
 _TICKER_DATE_RE = re.compile(r"KXHIGHNY-(\d{2})([A-Z]{3})(\d{2})-")
@@ -37,16 +46,64 @@ def _client() -> httpx.Client:
     return httpx.Client(timeout=30.0, event_hooks=make_logged_hooks("kalshi"))
 
 
-def fetch_markets(client: httpx.Client) -> list[dict]:
+def _retry_delay(resp: httpx.Response, attempt: int, base_delay: float) -> float:
+    retry_after = resp.headers.get("Retry-After") if resp.headers else None
+    if retry_after:
+        try:
+            return min(float(retry_after), RETRY_MAX_DELAY_SECONDS)
+        except ValueError:
+            pass
+    backoff = base_delay * (2 ** (attempt - 1))
+    return min(backoff, RETRY_MAX_DELAY_SECONDS) + random.uniform(0, 1)
+
+
+def _get_markets_page(
+    client: httpx.Client,
+    params: dict,
+    *,
+    max_attempts: int = MAX_ATTEMPTS,
+    base_delay: float = RETRY_BASE_DELAY_SECONDS,
+    sleep=time.sleep,
+) -> dict:
+    url = f"{KALSHI_BASE}/markets"
+    for attempt in range(1, max_attempts + 1):
+        resp = client.get(url, params=params)
+        if resp.status_code != 429 and resp.status_code < 500:
+            resp.raise_for_status()
+            return resp.json()
+        if attempt == max_attempts:
+            print(
+                f"ERROR fetch_markets: Kalshi markets request failed after "
+                f"{max_attempts} attempts with HTTP {resp.status_code} for {url} "
+                f"(series_ticker={SERIES_TICKER}); giving up."
+            )
+            resp.raise_for_status()
+        delay = _retry_delay(resp, attempt, base_delay)
+        print(
+            f"WARNING fetch_markets: attempt {attempt}/{max_attempts} got "
+            f"HTTP {resp.status_code} for {url} (series_ticker={SERIES_TICKER}); "
+            f"retrying in {delay:.1f}s."
+        )
+        sleep(delay)
+    raise RuntimeError("fetch_markets: unreachable retry state")  # pragma: no cover
+
+
+def fetch_markets(
+    client: httpx.Client,
+    *,
+    max_attempts: int = MAX_ATTEMPTS,
+    base_delay: float = RETRY_BASE_DELAY_SECONDS,
+    sleep=time.sleep,
+) -> list[dict]:
     markets: list[dict] = []
     cursor = None
     while True:
         params = {"series_ticker": SERIES_TICKER, "status": "open", "limit": 200}
         if cursor:
             params["cursor"] = cursor
-        resp = client.get(f"{KALSHI_BASE}/markets", params=params)
-        resp.raise_for_status()
-        data = resp.json()
+        data = _get_markets_page(
+            client, params, max_attempts=max_attempts, base_delay=base_delay, sleep=sleep
+        )
         markets.extend(data.get("markets", []))
         cursor = data.get("cursor")
         if not cursor:
