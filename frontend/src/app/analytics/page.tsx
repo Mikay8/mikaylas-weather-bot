@@ -92,6 +92,12 @@ export default function AnalyticsPage() {
               <span className="border-l border-[var(--card-border)] bg-[#1a2028] px-3 py-[9px] font-sans text-[13px] font-semibold sm:px-[18px]">
                 Analytics
               </span>
+              <Link
+                href="/cross-market"
+                className="border-l border-[var(--card-border)] px-3 py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)] sm:px-[18px]"
+              >
+                Cross-Market
+              </Link>
               {!DEMO_MODE && (
                 <Link
                   href="/settings"

@@ -185,6 +185,12 @@ export default function Home() {
               >
                 Analytics
               </Link>
+              <Link
+                href="/cross-market"
+                className="border-l border-[var(--card-border)] px-[18px] py-[9px] font-sans text-[13px] font-semibold text-[var(--foreground-secondary)] no-underline hover:bg-[var(--table-head-bg)] hover:text-[var(--foreground)]"
+              >
+                Cross-Market
+              </Link>
               {!DEMO_MODE && (
                 <Link
                   href="/settings"
