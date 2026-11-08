@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from weatherbot.api.analytics import router as analytics_router
 from weatherbot.api.bot import router as bot_router
+from weatherbot.api.cross_market import router as cross_market_router
 from weatherbot.api.forecast_agreement import get_forecast_agreement
 from weatherbot.api.recommendations import build_recommendations
 from weatherbot.api.settings import router as settings_router
@@ -69,6 +70,7 @@ async def block_demo_mutations(request: Request, call_next):
 app.include_router(settings_router)
 app.include_router(bot_router)
 app.include_router(analytics_router)
+app.include_router(cross_market_router)
 
 
 def _rows_to_dicts(result) -> list[dict]:

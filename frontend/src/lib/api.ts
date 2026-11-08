@@ -382,3 +382,75 @@ export type AnalyticsSummary = {
 export function fetchAnalyticsSummary() {
   return getJSON<AnalyticsSummary>("/api/analytics/summary");
 }
+
+export type CrossMarketPair = {
+  pair_id: number;
+  kalshi_ticker: string;
+  kalshi_event_ticker: string | null;
+  kalshi_title: string;
+  poly_condition_id: string;
+  poly_slug: string | null;
+  poly_question: string;
+  manifold_id: string | null;
+  manifold_question: string | null;
+  match_score: number;
+  close_time: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  scanned_at: string;
+  kalshi_yes_bid: number | null;
+  kalshi_yes_ask: number | null;
+  poly_yes_bid: number | null;
+  poly_yes_ask: number | null;
+  manifold_prob: number | null;
+  mid_gap: number | null;
+  arb_edge: number | null;
+  arb_direction: string | null;
+  kalshi_volume: number | null;
+  poly_volume: number | null;
+};
+
+export type CrossMarketSummary = {
+  pairs_tracked: number;
+  snapshots_total: number;
+  last_scan_at: string | null;
+  opportunities_now: number;
+  best_edge_now: number | null;
+  avg_mid_gap: number | null;
+};
+
+export type CrossMarketSnapshot = {
+  scanned_at: string;
+  kalshi_yes_bid: number | null;
+  kalshi_yes_ask: number | null;
+  poly_yes_bid: number | null;
+  poly_yes_ask: number | null;
+  manifold_prob: number | null;
+  mid_gap: number | null;
+  arb_edge: number | null;
+  arb_direction: string | null;
+};
+
+export function fetchCrossMarketPairs() {
+  return getJSON<CrossMarketPair[]>("/api/cross-market/pairs");
+}
+
+export function fetchCrossMarketSummary() {
+  return getJSON<CrossMarketSummary>("/api/cross-market/summary");
+}
+
+export function fetchCrossMarketHistory(pairId: number, limit = 48) {
+  return getJSON<CrossMarketSnapshot[]>(`/api/cross-market/pairs/${pairId}/history?limit=${limit}`);
+}
+
+export async function triggerCrossMarketScan() {
+  const res = await fetch(`${API_URL}/api/cross-market/scan`, { method: "POST" });
+  if (!res.ok) throw new Error(`Scan failed (${res.status})`);
+  return res.json() as Promise<{
+    pairs_matched: number;
+    opportunities: number;
+    kalshi_quotes: number;
+    polymarket_quotes: number;
+    manifold_attached: number;
+  }>;
+}

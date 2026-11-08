@@ -90,6 +90,23 @@ export default defineRailway(() => {
     env: sharedEnv,
   });
 
+  const crossMarketCron = service("cross-market-cron", {
+    ...repo,
+    build: { buildCommand: "pip install -r requirements.txt" },
+    deploy: {
+      startCommand: "python3 -m weatherbot.ingest.cross_market_scan",
+      // Every 15 min: cross-venue price gaps are only interesting if we
+      // can see how long they live. Read-only against Kalshi/Polymarket/
+      // Manifold public APIs; writes only to cross_market_* tables.
+      // Measurement only — nothing trades off this data.
+      cronSchedule: "*/15 * * * *",
+      restartPolicyType: "NEVER",
+      region: REGION,
+      limitOverride: CRON_LIMITS,
+    },
+    env: sharedEnv,
+  });
+
   const settlementCron = service("settlement-cron", {
     ...repo,
     build: { buildCommand: "pip install -r requirements.txt" },
