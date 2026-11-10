@@ -236,7 +236,7 @@ export default function CrossMarketPage() {
               {scanning ? "Scanning… (~15s)" : "Scan now"}
             </button>
             <span className="font-mono text-[12px] text-[var(--foreground-secondary)]">
-              The scanner also runs every 15 minutes on its own.
+              The scanner also runs every hour on its own.
             </span>
           </div>
         )}

@@ -1,7 +1,7 @@
 """Cross-market comparison endpoints: latest snapshot per matched
 Kalshi<->Polymarket pair, a summary strip, per-pair history, and a
-manual scan trigger (the cron in .railway/railway.ts runs it every
-15 min; this is for the UI's Scan now button).
+manual scan trigger (the cron in .railway/railway.ts runs it
+hourly; this is for the UI's Scan now button).
 
 All prices are executable bid/ask. arb_edge is net of Kalshi's taker
 fee; see cross_market.py for the math and its assumptions.
